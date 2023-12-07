@@ -6,12 +6,11 @@ import Company
 data class Route(
     val company: Company,
     val number: String,
-    val bound: Bound,
+    val bound: Bound?, // todo needed??
     val originEn: String,
     val originChiT: String,
     val originChiS: String,
     val destEn: String,
     val destChiT: String,
     val destChiS: String
-) {
-}
+)

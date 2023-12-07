@@ -7,5 +7,4 @@ data class Stop(
     val chiSName: String,
     val lat: Double,
     val long: Double
-) {
-}
+)

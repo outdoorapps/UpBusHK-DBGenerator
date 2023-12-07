@@ -1,5 +1,6 @@
 import data.Route
 import data.Stop
+import json_models.CtbRouteResponse
 import json_models.KmbRouteResponse
 import json_models.KmbStopResponse
 import okhttp3.OkHttpClient
@@ -7,55 +8,81 @@ import okhttp3.Request
 
 val routes: MutableList<Route> = mutableListOf()
 val stops: MutableList<Stop> = mutableListOf()
+val okHttpClient = OkHttpClient()
 
 fun main() {
-    getKmbRoute()
+    println("Getting KMB routes...")
+    getKmbRoutes()
+
+    println("Getting CTB routes...")
+    getCtbRoutes()
+
+    // todo NLB MTRB routes
+    println("Getting KMB stops...")
     getKmbStops()
-    println("Routes:${routes.size} ")
-    println("Stops:${stops.size} ")
+
+    // todo CTB NLB MTRB stops
+    // todo get fare info, list of stops for a route
+    // todo convert to JSON
+    // todo proper log
 }
 
+// todo handle exception, null pointer
 fun getKmbStops() {
-    val client = OkHttpClient()
-    val request = Request.Builder().url(KMB_ALL_STOPS).build()
-    val response = client.newCall(request).execute()
-    if (response.isSuccessful && response.body != null) {
-        val kmbStops = KmbStopResponse.fromJson(response.body!!.string())?.data
-        if (!kmbStops.isNullOrEmpty()) {
-            val newStops =
-                kmbStops.map { Stop(it.stop, it.nameEn, it.nameTc, it.nameSc, it.lat.toDouble(), it.long.toDouble()) }
-            stops.addAll(newStops)
+    try {
+        val request = Request.Builder().url(KMB_ALL_STOPS).build()
+        okHttpClient.newCall(request).execute().use {
+            if (it.isSuccessful && it.body != null) {
+                val kmbStops = KmbStopResponse.fromJson(it.body!!.string())?.data
+                if (!kmbStops.isNullOrEmpty()) {
+                    val newStops = kmbStops.map { x ->
+                        Stop(x.stop, x.nameEn, x.nameTc, x.nameSc, x.lat.toDouble(), x.long.toDouble())
+                    }
+                    stops.addAll(newStops)
+                }
+            }
         }
-    } else {
-        throw Exception() //todo
+    } catch (e: Exception) {
+        println("Error occurred while getting KMB stops \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
     }
 }
 
-fun getKmbRoute() {
-    val client = OkHttpClient()
-    val request = Request.Builder().url(KMB_ALL_ROUTES).build()
-    val response = client.newCall(request).execute()
-    if (response.isSuccessful && response.body != null) {
-        val kmbRoutes = KmbRouteResponse.fromJson(response.body!!.string())?.data
-        if (!kmbRoutes.isNullOrEmpty()) {
-            val newRoutes =
-                kmbRoutes.map {
-                    Route(
-                        Company.kmb,
-                        it.route,
-                        it.bound,
-                        it.origEn,
-                        it.origTc,
-                        it.origSc,
-                        it.destEn,
-                        it.destTc,
-                        it.destSc
-                    )
+fun getKmbRoutes() {
+    try {
+        val request = Request.Builder().url(KMB_ALL_ROUTES).build()
+        okHttpClient.newCall(request).execute().use {
+            if (it.isSuccessful && it.body != null) {
+                val kmbRoutes = KmbRouteResponse.fromJson(it.body!!.string())?.data
+                if (!kmbRoutes.isNullOrEmpty()) {
+                    val newRoutes = kmbRoutes.map { x ->
+                        Route(Company.kmb, x.route, x.bound, x.origEn, x.origTc, x.origSc, x.destEn, x.destTc, x.destSc)
+                    }
+                    routes.addAll(newRoutes)
+                    println("Added ${newRoutes.size} KMB routes")
                 }
-            routes.addAll(newRoutes)
+            }
         }
+    } catch (e: Exception) {
+        println("Error occurred while getting KMB routes \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
+    }
+}
 
-    } else {
-        throw Exception() //todo
+fun getCtbRoutes() {
+    try {
+        val request = Request.Builder().url(CTB_ALL_ROUTES).build()
+        okHttpClient.newCall(request).execute().use {
+            if (it.isSuccessful && it.body != null) {
+                val ctbRoutes = CtbRouteResponse.fromJson(it.body!!.string())?.data
+                if (!ctbRoutes.isNullOrEmpty()) {
+                    val newRoutes = ctbRoutes.map { x ->
+                        Route(Company.ctb, x.route, null, x.origEn, x.origTc, x.origSc, x.destEn, x.destTc, x.destSc)
+                    }
+                    routes.addAll(newRoutes)
+                    println("Added ${newRoutes.size} CTB routes")
+                }
+            }
+        }
+    } catch (e: Exception) {
+        println("Error occurred while getting CTB routes \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
     }
 }

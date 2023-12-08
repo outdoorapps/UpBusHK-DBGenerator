@@ -62,7 +62,7 @@ class StopController {
                 getAsync(url, fun(_) {
                     println("Request failed: $url")
                     countDownLatch.countDown()
-                    printGetCtbStopsProgress()
+                    printGetCtbStopsProgress(1)
                 }, fun(responseBody) {
                     val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
                     if (ctbStop?.stop != null) {
@@ -77,20 +77,19 @@ class StopController {
                         )
                         CoroutineScope(Dispatchers.IO).launch {
                             mutex.withLock { stops.add(newStop) }
-                            countDownLatch.countDown()
-                            printGetCtbStopsProgress()
                         }
                     }
+                    countDownLatch.countDown()
+                    printGetCtbStopsProgress(50)
                 })
             } catch (e: Exception) {
                 println("Error occurred while getting CTB stop \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
             }
         }
 
-        private fun printGetCtbStopsProgress() {
+        private fun printGetCtbStopsProgress(intervalCount: Int) {
             val finished = totalCtbStops - countDownLatch.count
-            // print every 50 requests finished
-            if ((finished % 50).toInt() == 0) {
+            if ((finished % intervalCount).toInt() == 0) {
                 val percentage = finished.toDouble() / totalCtbStops.toDouble() * 100
                 println("($finished/$totalCtbStops) ${String.format("%.1f", percentage)} % done")
             }

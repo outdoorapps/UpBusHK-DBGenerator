@@ -17,7 +17,7 @@ fun main() {// todo proper log
     execute("Getting CTB routes...") { getRoutes(Company.ctb) }
     executeWithCount("Getting NLB routes...") { getRoutes(Company.nlb) }
 
-    // 2. Get Stops  todo NLB MTRB stops
+    // 2. Get Stops  todo MTRB stops
     execute("Getting KMB stops...") { getKmbStops() }
     execute("Getting CTB stops...") { getCtbStops() }
     executeWithCount("Getting NLB stops...") { getNlbStops() }
@@ -34,11 +34,6 @@ fun main() {// todo proper log
             }
         }
     }
-//        execute("Writing to \"output.json\"...") {
-//        File("output.json").bufferedWriter().use {
-//            it.write(SharedData.toJson())
-//        }
-//    }
 }
 
 fun executeWithCount(description: String, action: () -> Int) {

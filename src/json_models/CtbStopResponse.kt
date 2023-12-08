@@ -1,10 +1,7 @@
 package json_models
 
 import com.beust.klaxon.Json
-import com.beust.klaxon.JsonObject
 import com.beust.klaxon.Klaxon
-
-private val klaxon = Klaxon()
 
 data class CtbStopResponse(
     val type: String,
@@ -15,10 +12,10 @@ data class CtbStopResponse(
 
     val data: CtbStop?
 ) {
-    public fun toJson() = klaxon.toJsonString(this)
+    public fun toJson() = Klaxon().toJsonString(this)
 
     companion object {
-        public fun fromJson(json: String) = klaxon.parse<CtbStopResponse>(json)
+        public fun fromJson(json: String) = Klaxon().parse<CtbStopResponse>(json)
     }
 }
 

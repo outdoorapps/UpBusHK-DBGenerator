@@ -31,9 +31,10 @@ class RouteController {
                         if (!kmbRoutes.isNullOrEmpty()) {
                             val newRoutes = kmbRoutes.map { x ->
                                 Route(
-                                    company,
+                                    Company.kmb,
                                     x.route,
                                     x.bound,
+                                    null,
                                     x.origEn,
                                     x.origTc,
                                     x.origSc,
@@ -52,8 +53,9 @@ class RouteController {
                         if (!ctbRoutes.isNullOrEmpty()) {
                             val newRoutes = ctbRoutes.map { x ->
                                 Route(
-                                    company,
+                                    Company.ctb,
                                     x.route,
+                                    null,
                                     null,
                                     x.origEn,
                                     x.origTc,
@@ -73,9 +75,10 @@ class RouteController {
                         if (!nlbRoutes.isNullOrEmpty()) {
                             val newRoutes = nlbRoutes.map { x ->
                                 Route(
-                                    company,
+                                    Company.nlb,
                                     x.routeNo,
                                     null,
+                                    x.routeId,
                                     x.routeNameE.split('>')[0].trim(),
                                     x.routeNameC.split('>')[0].trim(),
                                     x.routeNameS.split('>')[0].trim(),

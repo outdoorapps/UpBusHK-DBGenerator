@@ -7,5 +7,7 @@ class APIs {
 
         const val KMB_ALL_STOPS = "https://data.etabus.gov.hk/v1/transport/kmb/stop"
         const val CTB_ALL_STOP = "https://rt.data.gov.hk/v2/transport/citybus/stop"
+
+        const val NLB_ROUTE_STOP = "https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=list&routeId="
     }
 }

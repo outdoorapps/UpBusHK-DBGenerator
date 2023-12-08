@@ -1,27 +1,32 @@
 package controllers
 
+import APIs
 import APIs.Companion.CTB_ALL_STOP
 import APIs.Companion.KMB_ALL_STOPS
+import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
+import controllers.RouteController.Companion.routes
 import data.Stop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
+import json_models.NlbRouteStopResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.CountDownLatch
 
-class StopsController {
+class StopController {
     companion object {
-        private val mutex = Mutex()
         val stops: MutableList<Stop> = mutableListOf()
-        private var ctbStopsAdded = 0
-        private val CtbStopMaxId = 3823
+        private val mutex = Mutex()
+        private var stopsAdded = 0
+        private lateinit var countDownLatch: CountDownLatch
+        private val CtbStopMaxId = 3822
         private val CtbStopMinId = 1001
-        private val totalCtbStops = CtbStopMaxId - CtbStopMinId + 1;
-        private val countDownLatch = CountDownLatch(totalCtbStops)
+        private val totalCtbStops = CtbStopMaxId - CtbStopMinId + 1
         // todo get the stop number range from online source 3823
 
         fun getKmbStops(): Int {
@@ -43,12 +48,13 @@ class StopsController {
         }
 
         fun getCtbStops(): Int {
-            ctbStopsAdded = 0
+            countDownLatch = CountDownLatch(totalCtbStops)
+            stopsAdded = 0
             for (i in CtbStopMinId..CtbStopMaxId) {
                 getCtbStop(i)
             }
             countDownLatch.await()
-            return ctbStopsAdded //todo
+            return stopsAdded //todo
         }
 
         private fun getCtbStop(id: Int) {
@@ -71,7 +77,7 @@ class StopsController {
                             ctbStop.long!!.toDouble()
                         )
                         CoroutineScope(Dispatchers.IO).launch {
-                            addStop(newStop)
+                            mutex.withLock { stops.add(newStop) }
                             countDownLatch.countDown()
                             printGetCtbStopsProgress()
                         }
@@ -91,19 +97,48 @@ class StopsController {
             }
         }
 
-        fun getNlbStops() :Int {
-           val nlbStops = stops.distinctBy { x-> x.company == Company.nlb }
-            println(nlbStops.size)
-            return 0
+        fun getNlbStops(): Int {
+            val nlbRoutes = routes.filter { x -> x.company == Company.nlb }
+            stopsAdded = 0
+            countDownLatch = CountDownLatch(nlbRoutes.size)
+            nlbRoutes.forEach { getNlbRouteStop(it.routeId!!) }
+            countDownLatch.await()
+            return stopsAdded
         }
-        private suspend fun addStop(stop: Stop) {
-            mutex.lock()
-            try {
-                stops.add(stop)
-                ctbStopsAdded++
-            } finally {
-                mutex.unlock()
-            }
+
+        private fun getNlbRouteStop(routeId: String) {
+            val url = "${APIs.NLB_ROUTE_STOP}$routeId"
+            getAsync(url, fun(_) {
+                println("Request failed: $url")
+                countDownLatch.countDown()
+            }, fun(responseBody) {
+                val nlbRouteStopResponse = NlbRouteStopResponse.fromJson(responseBody)
+                val nlbStop = nlbRouteStopResponse?.stops
+                if (!nlbStop.isNullOrEmpty()) {
+                    nlbStop.forEach {
+                        CoroutineScope(Dispatchers.IO).launch {
+                            mutex.withLock {
+                                if (!stops.any { x -> (x.stopId == it.stopId) }) {
+                                    stops.add(
+                                        Stop(
+                                            Company.nlb,
+                                            it.stopId,
+                                            it.stopNameE,
+                                            it.stopNameC,
+                                            it.stopNameS,
+                                            it.latitude.toDouble(),
+                                            it.longitude.toDouble()
+                                        )
+                                    )
+                                    stopsAdded++
+                                    // println("NLB Stop added: ${it.stopId} ($stopsAdded)")
+                                }
+                            }
+                        }
+                    }
+                }
+                countDownLatch.countDown()
+            })
         }
     }
 }

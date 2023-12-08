@@ -7,6 +7,7 @@ data class Route(
     val company: Company,
     val number: String,
     val bound: Bound?, // todo needed??
+    val routeId: String?,
     val originEn: String,
     val originChiT: String,
     val originChiS: String,

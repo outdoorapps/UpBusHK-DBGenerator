@@ -1,7 +1,6 @@
 import controllers.RouteController.Companion.getRoutes
-import controllers.StopsController.Companion.getCtbStops
-import controllers.StopsController.Companion.getKmbStops
-import controllers.StopsController.Companion.getNlbStops
+import controllers.StopController.Companion.getCtbStops
+import controllers.StopController.Companion.getNlbStops
 import kotlin.time.measureTime
 
 
@@ -13,7 +12,7 @@ fun main() {
 
     // 2. Get Stops  todo NLB MTRB stops
 //    execute("Getting KMB stops...") { getKmbStops() }
-//    execute("Getting CTB stops...") { getCtbStops() } //todo sort: CTB stops only
+//    execute("Getting CTB stops...") { getCtbStops() }
     execute("Getting NLB stops...") { getNlbStops() }
 
     // 3. Get Route-stops & fare
@@ -22,7 +21,7 @@ fun main() {
     // todo proper log
 }
 
-fun execute(description: String, action : () -> Int) {
+fun execute(description: String, action: () -> Int) {
     print(description)
     var count: Int
     val t = measureTime {

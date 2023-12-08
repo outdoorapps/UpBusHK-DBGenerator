@@ -1,6 +1,7 @@
 package data
 
 import Company
+import com.beust.klaxon.Klaxon
 
 data class Stop(
     val company: Company,
@@ -10,4 +11,6 @@ data class Stop(
     val chiSName: String,
     val lat: Double,
     val long: Double
-)
+) {
+    public fun toJson() = Klaxon().toJsonString(this)
+}

@@ -6,7 +6,9 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
-import controllers.RouteController.Companion.routes
+import SharedData.Companion.mutex
+import SharedData.Companion.routes
+import SharedData.Companion.stops
 import data.Stop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -14,19 +16,16 @@ import json_models.NlbRouteStopResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import java.util.concurrent.CountDownLatch
 
 class StopController {
     companion object {
-        val stops: MutableList<Stop> = mutableListOf()
-        private val mutex = Mutex()
         private var stopsAdded = 0
         private lateinit var countDownLatch: CountDownLatch
-        private val CtbStopMaxId = 3822
-        private val CtbStopMinId = 1001
-        private val totalCtbStops = CtbStopMaxId - CtbStopMinId + 1
+        private const val CtbStopMaxId = 3822
+        private const val CtbStopMinId = 1001
+        private const val totalCtbStops = CtbStopMaxId - CtbStopMinId + 1
         // todo get the stop number range from online source 3823
 
         fun getKmbStops(): Int {

@@ -5,6 +5,7 @@ import APIs.Companion.KMB_ALL_ROUTES
 import APIs.Companion.NLB_ALL_ROUTES
 import Company
 import HttpHelper.Companion.get
+import SharedData.Companion.routes
 import data.Route
 import json_models.CtbRouteResponse
 import json_models.KmbRouteResponse
@@ -12,10 +13,9 @@ import json_models.NlbRouteResponse
 
 class RouteController {
     companion object {
-        val routes: MutableList<Route> = mutableListOf()
-        var routesAdded = 0
+        private var routesAdded = 0
 
-        fun getRoutes(company: Company) : Int{
+        fun getRoutes(company: Company): Int {
             try {
                 val url = when (company) {
                     Company.kmb -> KMB_ALL_ROUTES

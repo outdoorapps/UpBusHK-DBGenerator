@@ -13,13 +13,13 @@ const val EXPORT_PATH = "resources/output.json.gz"
 
 fun main() {// todo proper log
     // 1. Get Routes todo MTRB routes
-    execute("Getting KMB routes...") { getRoutes(Company.kmb) }
-    execute("Getting CTB routes...") { getRoutes(Company.ctb) }
+    executeWithCount("Getting KMB routes...") { getRoutes(Company.kmb) }
+    executeWithCount("Getting CTB routes...") { getRoutes(Company.ctb) }
     executeWithCount("Getting NLB routes...") { getRoutes(Company.nlb) }
 
     // 2. Get Stops  todo MTRB stops
-    execute("Getting KMB stops...") { getKmbStops() }
-    execute("Getting CTB stops...") { getCtbStops() }
+    executeWithCount("Getting KMB stops...") { getKmbStops() }
+    executeWithCount("Getting CTB stops...") { getCtbStops() }
     executeWithCount("Getting NLB stops...") { getNlbStops() }
 
     // 3. Get Route-stops & fare

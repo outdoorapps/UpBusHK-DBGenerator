@@ -6,6 +6,7 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
+import SharedData
 import SharedData.Companion.mutex
 import SharedData.Companion.routes
 import SharedData.Companion.stops
@@ -48,12 +49,12 @@ class StopController {
 
         fun getCtbStops(): Int {
             countDownLatch = CountDownLatch(totalCtbStops)
-            stopsAdded = 0
+            val original = stops.size
             for (i in CtbStopMinId..CtbStopMaxId) {
                 getCtbStop(i)
             }
             countDownLatch.await()
-            return stopsAdded //todo
+            return stops.size - original
         }
 
         private fun getCtbStop(id: Int) {

@@ -3,6 +3,7 @@ package controllers
 import APIs.Companion.CTB_ALL_ROUTES
 import APIs.Companion.KMB_ALL_ROUTES
 import APIs.Companion.NLB_ALL_ROUTES
+import Bound
 import Company
 import HttpHelper.Companion.get
 import SharedData.Companion.routes
@@ -55,7 +56,7 @@ class RouteController {
                                 Route(
                                     Company.ctb,
                                     x.route,
-                                    null,
+                                    Bound.O,
                                     null,
                                     x.origEn,
                                     x.origTc,
@@ -71,20 +72,36 @@ class RouteController {
                     }
 
                     Company.nlb -> {
-                        val nlbRoutes = NlbRouteResponse.fromJson(response)?.routes
+                        val nlbRoutes = NlbRouteResponse.fromJson(response)?.routes?.toMutableList()
+                            ?.apply { sortBy { it.routeId.toInt() } }
+                        val newRoutes = mutableListOf<Route>()
                         if (!nlbRoutes.isNullOrEmpty()) {
-                            val newRoutes = nlbRoutes.map { x ->
-                                Route(
-                                    Company.nlb,
-                                    x.routeNo,
-                                    null,
-                                    x.routeId,
-                                    x.routeNameE.split('>')[0].trim(),
-                                    x.routeNameC.split('>')[0].trim(),
-                                    x.routeNameS.split('>')[0].trim(),
-                                    x.routeNameE.split('>')[1].trim(),
-                                    x.routeNameC.split('>')[1].trim(),
-                                    x.routeNameS.split('>')[1].trim()
+                            nlbRoutes.forEach {
+                                val result = newRoutes.find { route -> route.number == it.routeNo }
+                                val originEn = it.routeNameE.split('>')[0].trim()
+                                val destEn = it.routeNameE.split('>')[1].trim()
+                                val bound: Bound = if (result == null) {
+                                    Bound.O
+                                } else {
+                                    if (result.originEn == originEn || result.destEn == destEn) {
+                                        Bound.O
+                                    } else {
+                                        Bound.I
+                                    }
+                                }
+                                newRoutes.add(
+                                    Route(
+                                        Company.nlb,
+                                        it.routeNo,
+                                        bound,
+                                        it.routeId,
+                                        originEn,
+                                        it.routeNameC.split('>')[0].trim(),
+                                        it.routeNameS.split('>')[0].trim(),
+                                        destEn,
+                                        it.routeNameC.split('>')[1].trim(),
+                                        it.routeNameS.split('>')[1].trim()
+                                    )
                                 )
                             }
                             routes.addAll(newRoutes)

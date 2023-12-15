@@ -9,7 +9,7 @@ import java.util.zip.GZIPOutputStream
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.measureTime
 
-const val EXPORT_PATH = "resources/output.json.gz"
+const val EXPORT_PATH = "resources/HKBuserDB.json.gz"
 
 fun main() {// todo proper log
     // 1. Get Routes todo MTRB routes

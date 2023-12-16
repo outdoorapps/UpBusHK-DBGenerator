@@ -66,7 +66,22 @@ class RouteController {
                                     x.destSc
                                 )
                             }
+                            val generatedRoutes = ctbRoutes.map { x ->
+                                Route(
+                                    Company.ctb,
+                                    x.route,
+                                    Bound.I,
+                                    null,
+                                    x.destEn,
+                                    x.destTc,
+                                    x.destSc,
+                                    x.origEn,
+                                    x.origTc,
+                                    x.origSc
+                                )
+                            }
                             routes.addAll(newRoutes)
+                            routes.addAll(generatedRoutes)
                             routesAdded = newRoutes.size
                         }
                     }

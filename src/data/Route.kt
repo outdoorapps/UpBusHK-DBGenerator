@@ -15,7 +15,7 @@ data class Route(
     val destEn: String,
     val destChiT: String,
     val destChiS: String,
-    val serviceType: String?,
+    val serviceType: Int?,
 ) {
     public fun toJson() = Klaxon().toJsonString(this)
 }

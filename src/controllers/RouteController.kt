@@ -42,7 +42,7 @@ class RouteController {
                                     x.destEn,
                                     x.destTc,
                                     x.destSc,
-                                    x.serviceType
+                                    x.serviceType.toInt()
                                 )
                             }
                             routes.addAll(newRoutes)

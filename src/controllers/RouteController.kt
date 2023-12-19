@@ -41,7 +41,8 @@ class RouteController {
                                     x.origSc,
                                     x.destEn,
                                     x.destTc,
-                                    x.destSc
+                                    x.destSc,
+                                    x.serviceType
                                 )
                             }
                             routes.addAll(newRoutes)
@@ -63,7 +64,8 @@ class RouteController {
                                     x.origSc,
                                     x.destEn,
                                     x.destTc,
-                                    x.destSc
+                                    x.destSc,
+                                    null,
                                 )
                             }
                             val generatedRoutes = ctbRoutes.map { x ->
@@ -77,7 +79,8 @@ class RouteController {
                                     x.destSc,
                                     x.origEn,
                                     x.origTc,
-                                    x.origSc
+                                    x.origSc,
+                                    null
                                 )
                             }
                             routes.addAll(newRoutes)
@@ -115,7 +118,8 @@ class RouteController {
                                         it.routeNameS.split('>')[0].trim(),
                                         destEn,
                                         it.routeNameC.split('>')[1].trim(),
-                                        it.routeNameS.split('>')[1].trim()
+                                        it.routeNameS.split('>')[1].trim(),
+                                        null,
                                     )
                                 )
                             }

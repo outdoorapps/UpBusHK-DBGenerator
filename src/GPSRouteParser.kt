@@ -7,19 +7,15 @@ import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.MappedRoute
 import json_models.CRS
 import json_models.CRSProperties
-import json_models.GPSRoute
 import json_models.RouteInfo
-import java.io.StringReader
-import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import kotlin.time.Duration
-import kotlin.time.DurationUnit
 import kotlin.time.measureTime
 
 
 class GPSRouteParser {
     companion object {
-        const val SOURCE_PATH = "resources/BusRoute_GEOJSON.zip"
+        private const val SOURCE_PATH = "resources/BusRoute_GEOJSON.zip"
         const val TEST_PATH = "resources/incomplete.zip"
 
         private val crsTransformationAdapter = createCrsTransformationMedian()
@@ -29,47 +25,42 @@ class GPSRouteParser {
             val file = ZipFile(SOURCE_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             val mappedRoutes = mutableListOf<MappedRoute>()
-            stream.bufferedReader().use {
-                JsonReader(StringReader(it.readText())).use { reader ->
-                    reader.beginObject {
-                        var type: String? = null
-                        var name: String? = null
-                        var crs: CRS? = null
-                        var t = 0
-                        while (reader.hasNext()) {
-                            val readName = reader.nextName()
-                            when (readName) {
-                                "type" -> type = reader.nextString()
-                                "name" -> name = reader.nextString()
-                                "crs" -> crs = reader.beginObject {
-                                    var crsType: String? = null
-                                    var properties: CRSProperties? = null
-                                    while (reader.hasNext()) {
-                                        when (reader.nextName()) {
-                                            "type" -> crsType = reader.nextString()
-                                            "properties" -> properties =
-                                                klaxon.parse<CRSProperties>(reader.nextObject().toJsonString())
-                                        }
+            JsonReader(stream.bufferedReader()).use {
+                it.beginObject {
+                    var type: String? = null
+                    var name: String? = null
+                    var crs: CRS? = null
+                    //var t = Duration.ZERO
+                    while (it.hasNext()) {
+                        val readName = it.nextName()
+                        when (readName) {
+                            "type" -> type = it.nextString()
+                            "name" -> name = it.nextString()
+                            "crs" -> crs = it.beginObject {
+                                var crsType: String? = null
+                                var properties: CRSProperties? = null
+                                while (it.hasNext()) {
+                                    when (it.nextName()) {
+                                        "type" -> crsType = it.nextString()
+                                        "properties" -> properties =
+                                            klaxon.parse<CRSProperties>(it.nextObject().toJsonString())
                                     }
-                                    CRS(crsType!!, properties!!)
                                 }
+                                CRS(crsType!!, properties!!)
+                            }
 
-                                "features" -> reader.beginArray {
-                                    while (reader.hasNext()) {
-                                        val time = measureTime {
-                                            val route = getMappedRoute(reader)
-                                            mappedRoutes.add(route)
-                                            println(
-                                                "#${mappedRoutes.size} Route added:${route.routeInfo.routeId}," +
-                                                        "${route.routeInfo.companyCode}-${route.routeInfo.routeNameE}"
-                                            )
-                                        }
-                                        t += time.toInt(DurationUnit.MILLISECONDS)
-
-                                        if(mappedRoutes.size % 50 == 0) {
-                                            println("Added ${mappedRoutes.size} routes in $t ms")
-                                        }
+                            "features" -> it.beginArray {
+                                while (it.hasNext()) {
+                                    var route: MappedRoute
+                                    val time = measureTime {
+                                        route = getMappedRoute(it)
+                                        mappedRoutes.add(route)
                                     }
+                                    println(
+                                        "#${mappedRoutes.size} Route added:${route.routeInfo.routeId}," +
+                                                "${route.routeInfo.companyCode}-${route.routeInfo.routeNameE}," +
+                                                "size:${route.path.size} in $time"
+                                    )
                                 }
                             }
                         }
@@ -94,7 +85,7 @@ class GPSRouteParser {
                             while (reader.hasNext()) {
                                 when (reader.nextName()) {
                                     "type" -> geometryType = reader.nextString()
-                                    "coordinates" -> path = getPath(reader)
+                                    "coordinates" -> path = getPath(reader, geometryType!! == "MultiLineString")
                                 }
                             }
                         }
@@ -104,38 +95,50 @@ class GPSRouteParser {
             return MappedRoute(routeInfo!!, path)
         }
 
-        private fun getPath(reader: JsonReader): List<CrsCoordinate> {
+        private fun getPath(reader: JsonReader, isMultiLineString: Boolean): List<CrsCoordinate> {
             val wgs84coordinates = mutableListOf<CrsCoordinate>()
             reader.beginArray {
                 while (reader.hasNext()) {
-                    val hk1980Coordinates = mutableListOf<CrsCoordinate>()
-                    reader.beginArray {
-                        while (reader.hasNext()) {
-                            val array = reader.nextArray()
-                            hk1980Coordinates.add(
-                                eastingNorthing(
-                                    array[0].toString().toDouble(),
-                                    array[1].toString().toDouble(),
-                                    EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
-                                )
-                            )
-                        }
-                    }
-                    // Removes duplicates
-                    // Notes: The full path is organized as individual paths between stops. The first coordinate of the
-                    // next line is the same as the last coordinate of the previous line
-                    if (wgs84coordinates.size > 0) {
-                        hk1980Coordinates.removeFirst()
-                    }
+                    if (isMultiLineString) {
+                        reader.beginArray {
+                            val hk1980Coordinates = getCoordinates(reader)
 
-                    wgs84coordinates.addAll(hk1980Coordinates.map { hk1980Coordinate ->
-                        crsTransformationAdapter.transformToCoordinate(
-                            hk1980Coordinate, EpsgNumber.WORLD__WGS_84__4326
-                        )
-                    })
+                            // Removes duplicates (notes: The full path is organized as individual paths between stops.
+                            // The first coordinate of the next line is the same as the last coordinate of the previous
+                            // line)
+                            if (wgs84coordinates.size > 0) {
+                                hk1980Coordinates.removeFirst()
+                            }
+                            wgs84coordinates.addAll(hk1980Coordinates)
+                            //todo transform takes a long time
+//                            wgs84coordinates.addAll(hk1980Coordinates.map { hk1980Coordinate ->
+//                                crsTransformationAdapter.transformToCoordinate(
+//                                    hk1980Coordinate, EpsgNumber.WORLD__WGS_84__4326
+//                                )
+//                            })
+                        }
+                    } else {
+                        val hk1980Coordinates = getCoordinates(reader)
+                        wgs84coordinates.addAll(hk1980Coordinates)
+                    }
                 }
             }
             return wgs84coordinates
+        }
+
+        private fun getCoordinates(reader: JsonReader): MutableList<CrsCoordinate> {
+            val hk1980Coordinates = mutableListOf<CrsCoordinate>()
+            while (reader.hasNext()) {
+                val array = reader.nextArray()
+                hk1980Coordinates.add(
+                    eastingNorthing(
+                        array[0].toString().toDouble(),
+                        array[1].toString().toDouble(),
+                        EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
+                    )
+                )
+            }
+            return hk1980Coordinates
         }
     }
 }

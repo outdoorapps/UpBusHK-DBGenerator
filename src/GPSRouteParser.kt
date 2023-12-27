@@ -1,14 +1,13 @@
 import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
-import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory.createCrsTransformationMedian
+import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.MappedRoute
 import json_models.CRS
 import json_models.CRSProperties
 import json_models.RouteInfo
-import java.text.Collator
 import java.util.stream.Collectors
 import java.util.zip.ZipFile
 import kotlin.time.Duration
@@ -20,7 +19,7 @@ class GPSRouteParser {
         private const val SOURCE_PATH = "resources/BusRoute_GEOJSON.zip"
         const val TEST_PATH = "resources/incomplete.zip"
 
-        private val crsTransformationAdapter = createCrsTransformationMedian()
+        private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
         private val klaxon = Klaxon()
 
         fun readFile() {
@@ -59,11 +58,14 @@ class GPSRouteParser {
                                         mappedRoutes.add(route)
                                     }
                                     t = t.plus(time)
-                                    println(
-                                        "#${mappedRoutes.size} Route added:${route.routeInfo.routeId}," +
-                                                "${route.routeInfo.companyCode}-${route.routeInfo.routeNameE}," +
-                                                "size:${route.path.size} in $time (total:$t)"
-                                    )
+//                                    println(
+//                                        "${mappedRoutes.size} Route added:${route.routeInfo.routeId}," +
+//                                                "${route.routeInfo.companyCode}-${route.routeInfo.routeNameE}," +
+//                                                "size:${route.path.size} in $time (total:$t, total transformations:$total)"
+//                                    )
+                                    if (mappedRoutes.size % 100 == 0) {
+                                        println("${mappedRoutes.size} routes added in $t")
+                                    }
                                 }
                             }
                         }
@@ -149,6 +151,8 @@ class GPSRouteParser {
 }
 
 fun main() {
-    GPSRouteParser.readFile()
-    println("Done!")
+    val t = measureTime {
+        GPSRouteParser.readFile()
+    }
+    println("Finished in $t")
 }

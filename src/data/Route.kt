@@ -2,6 +2,7 @@ package data
 
 import Bound
 import Company
+import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
 data class Route(
@@ -15,7 +16,8 @@ data class Route(
     val destEn: String,
     val destChiT: String,
     val destChiS: String,
+    @Json(name = "service_type")
     val serviceType: Int?,
 ) {
-    public fun toJson() = Klaxon().toJsonString(this)
+    fun toJson() = Klaxon().toJsonString(this)
 }

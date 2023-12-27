@@ -1,0 +1,50 @@
+<component name="libraryTable">
+  <library name="programmerare.crs.transformation.adapter.impl.nga" type="repository">
+    <properties maven-id="com.programmerare.crs-transformation:crs-transformation-adapter-impl-nga:2.0.1" />
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/programmerare/crs-transformation/crs-transformation-adapter-impl-nga/2.0.1/crs-transformation-adapter-impl-nga-2.0.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/programmerare/crs-transformation/crs-transformation-adapter-core/2.0.1/crs-transformation-adapter-core-2.0.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.0/kotlin-stdlib-jdk8-1.8.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/1.8.0/kotlin-stdlib-1.8.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.0/kotlin-stdlib-common-1.8.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.0/kotlin-stdlib-jdk7-1.8.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/sf/sf-proj/4.3.0/sf-proj-4.3.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/sf/2.2.0/sf-2.2.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/proj/1.1.2/proj-1.1.2.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/crs/1.1.4/crs-1.1.4.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/locationtech/proj4j/proj4j/1.1.5/proj4j-1.1.5.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/com/programmerare/crs-transformation/crs-transformation-adapter-impl-nga/2.0.1/crs-transformation-adapter-impl-nga-2.0.1-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/programmerare/crs-transformation/crs-transformation-adapter-core/2.0.1/crs-transformation-adapter-core-2.0.1-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.0/kotlin-stdlib-jdk8-1.8.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/1.8.0/kotlin-stdlib-1.8.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.0/kotlin-stdlib-common-1.8.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.0/kotlin-stdlib-jdk7-1.8.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/sf/sf-proj/4.3.0/sf-proj-4.3.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/sf/2.2.0/sf-2.2.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/proj/1.1.2/proj-1.1.2-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/crs/1.1.4/crs-1.1.4-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/locationtech/proj4j/proj4j/1.1.5/proj4j-1.1.5-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/programmerare/crs-transformation/crs-transformation-adapter-impl-nga/2.0.1/crs-transformation-adapter-impl-nga-2.0.1-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/programmerare/crs-transformation/crs-transformation-adapter-core/2.0.1/crs-transformation-adapter-core-2.0.1-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/slf4j/slf4j-api/1.7.36/slf4j-api-1.7.36-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk8/1.8.0/kotlin-stdlib-jdk8-1.8.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib/1.8.0/kotlin-stdlib-1.8.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-common/1.8.0/kotlin-stdlib-common-1.8.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/annotations/13.0/annotations-13.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/jetbrains/kotlin/kotlin-stdlib-jdk7/1.8.0/kotlin-stdlib-jdk7-1.8.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/sf/sf-proj/4.3.0/sf-proj-4.3.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/sf/2.2.0/sf-2.2.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/proj/1.1.2/proj-1.1.2-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/mil/nga/crs/1.1.4/crs-1.1.4-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/locationtech/proj4j/proj4j/1.1.5/proj4j-1.1.5-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

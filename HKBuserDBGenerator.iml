@@ -14,5 +14,11 @@
     <orderEntry type="library" name="squareup.okhttp3.okhttp" level="project" />
     <orderEntry type="library" name="beust.klaxon" level="project" />
     <orderEntry type="library" name="jetbrains.kotlinx.coroutines.core" level="project" />
+    <orderEntry type="library" name="programmerare.crs.transformation.adapter.core" level="project" />
+    <orderEntry type="library" name="programmerare.crs.transformation.constants" level="project" />
+    <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.proj4j" level="project" />
+    <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.orbisgis" level="project" />
+    <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.proj4jlocationtech" level="project" />
+    <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.nga" level="project" />
   </component>
 </module>

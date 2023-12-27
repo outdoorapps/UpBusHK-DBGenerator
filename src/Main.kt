@@ -9,7 +9,7 @@ import java.util.zip.GZIPOutputStream
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.measureTime
 
-const val EXPORT_PATH = "resources/HKBuserDB.json.gz"
+const val DB_EXPORT_PATH = "resources/HKBuserDB.json.gz"
 
 fun main() {// todo proper log
     // 1. Get Routes todo MTRB routes
@@ -25,8 +25,8 @@ fun main() {// todo proper log
     // 3. Get Route-stops & fare
 
     // 4. Write to Json.gz
-    execute("Writing to \"$EXPORT_PATH\"...") {
-        val output = FileOutputStream(EXPORT_PATH)
+    execute("Writing to \"$DB_EXPORT_PATH\"...") {
+        val output = FileOutputStream(DB_EXPORT_PATH)
         output.use {
             val writer: Writer = OutputStreamWriter(GZIPOutputStream(it), UTF_8)
             writer.use { w ->

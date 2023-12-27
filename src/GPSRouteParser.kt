@@ -8,6 +8,8 @@ import data.MappedRoute
 import json_models.CRS
 import json_models.CRSProperties
 import json_models.RouteInfo
+import java.text.Collator
+import java.util.stream.Collectors
 import java.util.zip.ZipFile
 import kotlin.time.Duration
 import kotlin.time.measureTime
@@ -30,7 +32,7 @@ class GPSRouteParser {
                     var type: String? = null
                     var name: String? = null
                     var crs: CRS? = null
-                    //var t = Duration.ZERO
+                    var t = Duration.ZERO
                     while (it.hasNext()) {
                         val readName = it.nextName()
                         when (readName) {
@@ -56,10 +58,11 @@ class GPSRouteParser {
                                         route = getMappedRoute(it)
                                         mappedRoutes.add(route)
                                     }
+                                    t = t.plus(time)
                                     println(
                                         "#${mappedRoutes.size} Route added:${route.routeInfo.routeId}," +
                                                 "${route.routeInfo.companyCode}-${route.routeInfo.routeNameE}," +
-                                                "size:${route.path.size} in $time"
+                                                "size:${route.path.size} in $time (total:$t)"
                                     )
                                 }
                             }
@@ -109,17 +112,11 @@ class GPSRouteParser {
                             if (wgs84coordinates.size > 0) {
                                 hk1980Coordinates.removeFirst()
                             }
-                            wgs84coordinates.addAll(hk1980Coordinates)
-                            //todo transform takes a long time
-//                            wgs84coordinates.addAll(hk1980Coordinates.map { hk1980Coordinate ->
-//                                crsTransformationAdapter.transformToCoordinate(
-//                                    hk1980Coordinate, EpsgNumber.WORLD__WGS_84__4326
-//                                )
-//                            })
+                            wgs84coordinates.addAll(getWgs84Coordinates(hk1980Coordinates))
                         }
                     } else {
                         val hk1980Coordinates = getCoordinates(reader)
-                        wgs84coordinates.addAll(hk1980Coordinates)
+                        wgs84coordinates.addAll(getWgs84Coordinates(hk1980Coordinates))
                     }
                 }
             }
@@ -139,6 +136,14 @@ class GPSRouteParser {
                 )
             }
             return hk1980Coordinates
+        }
+
+        private fun getWgs84Coordinates(hk1980Coordinates: List<CrsCoordinate>): List<CrsCoordinate> {
+            return hk1980Coordinates.parallelStream().map { hk1980Coordinate ->
+                crsTransformationAdapter.transformToCoordinate(
+                    hk1980Coordinate, EpsgNumber.WORLD__WGS_84__4326
+                )
+            }.collect(Collectors.toList())
         }
     }
 }

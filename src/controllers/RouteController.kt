@@ -6,11 +6,11 @@ import APIs.Companion.NLB_ALL_ROUTES
 import Bound
 import Company
 import HttpHelper.Companion.get
-import SharedData.Companion.routes
 import data.Route
 import json_models.CtbRouteResponse
 import json_models.KmbRouteResponse
 import json_models.NlbRouteResponse
+import sharedData
 
 class RouteController {
     companion object {
@@ -45,7 +45,7 @@ class RouteController {
                                     x.serviceType.toInt()
                                 )
                             }
-                            routes.addAll(newRoutes)
+                            sharedData.routes.addAll(newRoutes)
                             routesAdded = newRoutes.size
                         }
                     }
@@ -83,8 +83,8 @@ class RouteController {
                                     null
                                 )
                             }
-                            routes.addAll(newRoutes)
-                            routes.addAll(generatedRoutes)
+                            sharedData.routes.addAll(newRoutes)
+                            sharedData.routes.addAll(generatedRoutes)
                             routesAdded = newRoutes.size
                         }
                     }
@@ -123,7 +123,7 @@ class RouteController {
                                     )
                                 )
                             }
-                            routes.addAll(newRoutes)
+                            sharedData.routes.addAll(newRoutes)
                             routesAdded = newRoutes.size
                         }
                     }

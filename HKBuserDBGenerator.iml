@@ -20,5 +20,6 @@
     <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.orbisgis" level="project" />
     <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.proj4jlocationtech" level="project" />
     <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.nga" level="project" />
+    <orderEntry type="library" name="jetbrains.kotlinx.coroutines.core1" level="project" />
   </component>
 </module>

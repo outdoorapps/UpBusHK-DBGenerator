@@ -5,19 +5,22 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.MappedRoute
+import data.TestData
 import json_models.CRS
 import json_models.CRSProperties
 import json_models.RouteInfo
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
+import java.io.Writer
 import java.util.stream.Collectors
+import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
 import kotlin.time.Duration
 import kotlin.time.measureTime
 
-
 class GPSRouteParser {
     companion object {
         private const val SOURCE_PATH = "resources/BusRoute_GEOJSON.zip"
-        const val TEST_PATH = "resources/incomplete.zip"
 
         private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
         private val klaxon = Klaxon()
@@ -72,6 +75,7 @@ class GPSRouteParser {
                     }
                 }
             }
+            testData.routeInfos.addAll(mappedRoutes.map{it.routeInfo})
         }
 
         private fun getMappedRoute(reader: JsonReader): MappedRoute {
@@ -149,10 +153,20 @@ class GPSRouteParser {
         }
     }
 }
+const val ROUTE_INFO_EXPORT_PATH = "resources/route_info.json.gz"
 
 fun main() {
     val t = measureTime {
         GPSRouteParser.readFile()
     }
     println("Finished in $t")
+
+    val output = FileOutputStream(ROUTE_INFO_EXPORT_PATH)
+
+    output.use {
+        val writer: Writer = OutputStreamWriter(GZIPOutputStream(it), Charsets.UTF_8)
+        writer.use { w ->
+            w.write(testData.toJson())
+        }
+    }
 }

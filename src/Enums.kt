@@ -1,4 +1,4 @@
-enum class Company { kmb, ctb, nlb, mtrb }
+enum class Company { KMB, CTB, NLB, MTRB }
 
 enum class Bound(val value: String) {
     I("I"),

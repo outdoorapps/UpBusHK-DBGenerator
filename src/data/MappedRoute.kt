@@ -6,7 +6,7 @@ import json_models.RouteInfo
 
 private val klaxon = Klaxon()
 
-data class TestData(val routeInfos: MutableList<RouteInfo>) {
+data class TestData(val routeInfos: MutableList<RouteInfo> = mutableListOf()) {
     fun toJson() = Klaxon().toJsonString(this)
 }
 

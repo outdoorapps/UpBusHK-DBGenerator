@@ -4,18 +4,17 @@ import controllers.StopController.Companion.getKmbStops
 import controllers.StopController.Companion.getNlbStops
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
-import java.io.Writer
 import java.util.zip.GZIPOutputStream
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.measureTime
 
-const val DB_EXPORT_PATH = "resources/HKBuserDB.json.gz"
+const val DB_EXPORT_PATH = "resources/HKBuserDBTest.json.gz"
 
 fun main() {// todo proper log
     // 1. Get Routes todo MTRB routes
-    executeWithCount("Getting KMB routes...") { getRoutes(Company.kmb) }
-    executeWithCount("Getting CTB routes...") { getRoutes(Company.ctb) }
-    executeWithCount("Getting NLB routes...") { getRoutes(Company.nlb) }
+    executeWithCount("Getting KMB routes...") { getRoutes(Company.KMB) }
+    executeWithCount("Getting CTB routes...") { getRoutes(Company.CTB) }
+    executeWithCount("Getting NLB routes...") { getRoutes(Company.NLB) }
 
     // 2. Get Stops  todo MTRB stops
     executeWithCount("Getting KMB stops...") { getKmbStops() }
@@ -28,9 +27,9 @@ fun main() {// todo proper log
     execute("Writing to \"$DB_EXPORT_PATH\"...") {
         val output = FileOutputStream(DB_EXPORT_PATH)
         output.use {
-            val writer: Writer = OutputStreamWriter(GZIPOutputStream(it), UTF_8)
+            val writer = OutputStreamWriter(GZIPOutputStream(it), UTF_8)
             writer.use { w ->
-                w.write(SharedData.toJson())
+                w.write(sharedData.toJson())
             }
         }
     }

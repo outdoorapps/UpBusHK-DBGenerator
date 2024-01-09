@@ -6,7 +6,6 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
-import SharedData.Companion.mutex
 import data.Stop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -14,6 +13,7 @@ import json_models.NlbRouteStopResponse
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import sharedData
 import java.util.concurrent.CountDownLatch
@@ -22,10 +22,11 @@ class StopController {
     companion object {
         private var stopsAdded = 0
         private lateinit var countDownLatch: CountDownLatch
-        private const val CtbStopMaxId = 3822
+        private const val CtbStopMaxId = 3827
         private const val CtbStopMinId = 1001
         private const val totalCtbStops = CtbStopMaxId - CtbStopMinId + 1
-        // todo get the stop number range from online source 3823
+        private val mutex = Mutex()
+        // todo get the stop number range from online source 3827
 
         fun getKmbStops(): Int {
             var stopsAdded = 0
@@ -34,7 +35,7 @@ class StopController {
                 val kmbStops = KmbStopResponse.fromJson(response)?.data
                 if (!kmbStops.isNullOrEmpty()) {
                     val newStops = kmbStops.map { x ->
-                        Stop(Company.kmb, x.stop, x.nameEn, x.nameTc, x.nameSc, x.lat.toDouble(), x.long.toDouble())
+                        Stop(Company.KMB, x.stop, x.nameEn, x.nameTc, x.nameSc, x.lat.toDouble(), x.long.toDouble())
                     }
                     sharedData.stops.addAll(newStops)
                     stopsAdded = newStops.size
@@ -66,7 +67,7 @@ class StopController {
                     val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
                     if (ctbStop?.stop != null) {
                         val newStop = Stop(
-                            Company.ctb,
+                            Company.CTB,
                             ctbStop.stop,
                             ctbStop.nameEn!!,
                             ctbStop.nameTc!!,
@@ -95,7 +96,7 @@ class StopController {
         }
 
         fun getNlbStops(): Int {
-            val nlbRoutes = sharedData.routes.filter { x -> x.company == Company.nlb }
+            val nlbRoutes = sharedData.routes.filter { x -> x.company == Company.NLB }
             stopsAdded = 0
             countDownLatch = CountDownLatch(nlbRoutes.size)
             nlbRoutes.forEach { getNlbRouteStop(it.routeId!!) }
@@ -118,7 +119,7 @@ class StopController {
                                 if (!sharedData.stops.any { x -> (x.stopId == it.stopId) }) {
                                     sharedData.stops.add(
                                         Stop(
-                                            Company.nlb,
+                                            Company.NLB,
                                             it.stopId,
                                             it.stopNameE,
                                             it.stopNameC,

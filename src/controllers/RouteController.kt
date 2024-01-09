@@ -19,20 +19,20 @@ class RouteController {
         fun getRoutes(company: Company): Int {
             try {
                 val url = when (company) {
-                    Company.kmb -> KMB_ALL_ROUTES
-                    Company.ctb -> CTB_ALL_ROUTES
-                    Company.nlb -> NLB_ALL_ROUTES
-                    Company.mtrb -> "" //todo
+                    Company.KMB -> KMB_ALL_ROUTES
+                    Company.CTB -> CTB_ALL_ROUTES
+                    Company.NLB -> NLB_ALL_ROUTES
+                    Company.MTRB -> "" //todo
                 }
                 val response = get(url)
 
                 when (company) {
-                    Company.kmb -> {
+                    Company.KMB -> {
                         val kmbRoutes = KmbRouteResponse.fromJson(response)?.data
                         if (!kmbRoutes.isNullOrEmpty()) {
                             val newRoutes = kmbRoutes.map { x ->
                                 Route(
-                                    Company.kmb,
+                                    Company.KMB,
                                     x.route,
                                     x.bound,
                                     null,
@@ -50,12 +50,12 @@ class RouteController {
                         }
                     }
 
-                    Company.ctb -> {
+                    Company.CTB -> {
                         val ctbRoutes = CtbRouteResponse.fromJson(response)?.data
                         if (!ctbRoutes.isNullOrEmpty()) {
                             val newRoutes = ctbRoutes.map { x ->
                                 Route(
-                                    Company.ctb,
+                                    Company.CTB,
                                     x.route,
                                     Bound.O,
                                     null,
@@ -70,7 +70,7 @@ class RouteController {
                             }
                             val generatedRoutes = ctbRoutes.map { x ->
                                 Route(
-                                    Company.ctb,
+                                    Company.CTB,
                                     x.route,
                                     Bound.I,
                                     null,
@@ -89,7 +89,7 @@ class RouteController {
                         }
                     }
 
-                    Company.nlb -> {
+                    Company.NLB -> {
                         val nlbRoutes = NlbRouteResponse.fromJson(response)?.routes?.toMutableList()
                             ?.apply { sortBy { it.routeId.toInt() } }
                         val newRoutes = mutableListOf<Route>()
@@ -109,7 +109,7 @@ class RouteController {
                                 }
                                 newRoutes.add(
                                     Route(
-                                        Company.nlb,
+                                        Company.NLB,
                                         it.routeNo,
                                         bound,
                                         it.routeId,
@@ -128,7 +128,7 @@ class RouteController {
                         }
                     }
 
-                    Company.mtrb -> TODO()
+                    Company.MTRB -> TODO()
                 }
             } catch (e: Exception) {
                 println("Error occurred while getting ${company.name.uppercase()} routes \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())

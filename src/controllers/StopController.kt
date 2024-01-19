@@ -6,6 +6,7 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
+import Utils
 import data.Stop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -57,13 +58,14 @@ class StopController {
         }
 
         private fun getCtbStop(id: Int) {
+            val start = System.currentTimeMillis()
             try {
                 val url = "$CTB_ALL_STOP/${String.format("%06d", id)}"
-                getAsync(url, fun(_) {
+                getAsync(url, onFailure = {
                     println("Request failed: $url")
                     countDownLatch.countDown()
-                    printGetCtbStopsProgress(1)
-                }, fun(responseBody) {
+                    printGetCtbStopsProgress(1, start)
+                }, onResponse = fun(responseBody) {
                     val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
                     if (ctbStop?.stop != null) {
                         val newStop = Stop(
@@ -80,23 +82,22 @@ class StopController {
                         }
                     }
                     countDownLatch.countDown()
-                    printGetCtbStopsProgress(50)
+                    printGetCtbStopsProgress(50, start)
                 })
             } catch (e: Exception) {
                 println("Error occurred while getting CTB stop \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
             }
         }
 
-        private fun printGetCtbStopsProgress(intervalCount: Int) {
-            val finished = totalCtbStops - countDownLatch.count
-            if ((finished % intervalCount).toInt() == 0) {
-                val percentage = finished.toDouble() / totalCtbStops.toDouble() * 100
-                println("($finished/$totalCtbStops) ${String.format("%.1f", percentage)} % done")
+        private fun printGetCtbStopsProgress(intervalCount: Int, startTimeInMillis: Long) {
+            val finishedCount = totalCtbStops - countDownLatch.count.toInt()
+            if ((finishedCount % intervalCount) == 0) {
+                Utils.printPercentage(finishedCount, totalCtbStops, startTimeInMillis)
             }
         }
 
         fun getNlbStops(): Int {
-            val nlbRoutes = sharedData.routes.filter { x -> x.company == Company.NLB }
+            val nlbRoutes = sharedData.requestableRoutes.filter { x -> x.company == Company.NLB }
             stopsAdded = 0
             countDownLatch = CountDownLatch(nlbRoutes.size)
             nlbRoutes.forEach { getNlbRouteStop(it.routeId!!) }
@@ -116,11 +117,11 @@ class StopController {
                     nlbStop.forEach {
                         CoroutineScope(Dispatchers.IO).launch {
                             mutex.withLock {
-                                if (!sharedData.stops.any { x -> (x.stopId == it.stopId) }) {
+                                if (!sharedData.stops.any { x -> (x.stopId == it.stop) }) {
                                     sharedData.stops.add(
                                         Stop(
                                             Company.NLB,
-                                            it.stopId,
+                                            it.stop,
                                             it.stopNameE,
                                             it.stopNameC,
                                             it.stopNameS,

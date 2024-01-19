@@ -8,9 +8,11 @@ import java.util.zip.GZIPOutputStream
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.measureTime
 
-const val DB_EXPORT_PATH = "resources/HKBuserDBTest.json.gz"
+const val DB_EXPORT_PATH = "resources/HKBuserDB.json.gz"
 
-fun main() {// todo proper log
+// todo proper log
+// todo not finishing at the end, okhttp?
+fun main() {
     // 1. Get Routes todo MTRB routes
     executeWithCount("Getting KMB routes...") { getRoutes(Company.KMB) }
     executeWithCount("Getting CTB routes...") { getRoutes(Company.CTB) }
@@ -36,7 +38,7 @@ fun main() {// todo proper log
 }
 
 fun executeWithCount(description: String, action: () -> Int) {
-    print(description)
+    println(description)
     var count: Int
     val t = measureTime {
         count = action()
@@ -45,7 +47,7 @@ fun executeWithCount(description: String, action: () -> Int) {
 }
 
 fun execute(description: String, action: () -> Unit) {
-    print(description)
+    println(description)
     val t = measureTime { action() }
     println("finished in $t")
 }

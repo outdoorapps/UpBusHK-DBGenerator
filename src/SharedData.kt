@@ -1,12 +1,14 @@
+import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
-import data.Route
+import data.RequestableRoute
 import data.Stop
 
 
 val sharedData: SharedData = SharedData()
 
 data class SharedData(
-    val routes: MutableList<Route> = mutableListOf(), val stops: MutableList<Stop> = mutableListOf()
+    @Json(name = "routes") val requestableRoutes: MutableList<RequestableRoute> = mutableListOf(),
+    val stops: MutableList<Stop> = mutableListOf()
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

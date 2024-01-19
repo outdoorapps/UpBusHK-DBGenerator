@@ -46,13 +46,13 @@ data class Geometry(
 
 data class RouteInfo(
     @Json(name = "OBJECTID")
-    val objectId: Long,
+    val objectId: Int,
 
     @Json(name = "ROUTE_ID")
-    val routeId: Long,
+    val routeId: Int,
 
     @Json(name = "ROUTE_SEQ")
-    val routeSeq: Long,
+    val routeSeq: Int,
 
     @Json(name = "COMPANY_CODE")
     val companyCode: String,
@@ -61,7 +61,7 @@ data class RouteInfo(
     val routeNameE: String,
 
     @Json(name = "ST_STOP_ID")
-    val stStopId: Long,
+    val stStopId: Int,
 
     @Json(name = "ST_STOP_NAMEE")
     val stStopNameE: String,
@@ -73,7 +73,7 @@ data class RouteInfo(
     val stStopNameS: String,
 
     @Json(name = "ED_STOP_ID")
-    val edStopId: Long,
+    val edStopId: Int,
 
     @Json(name = "ED_STOP_NAMEE")
     val edStopNameE: String,

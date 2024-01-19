@@ -5,25 +5,20 @@ import Company
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-data class Route(
-    val companyCode: String,
+data class RequestableRoute(
+    val company: Company,
     val number: String,
     val bound: Bound,
-    val originStopId: Int,
+    val routeId: String?,
     val originEn: String,
     val originChiT: String,
     val originChiS: String,
-    val destStopId: Int,
     val destEn: String,
     val destChiT: String,
     val destChiS: String,
     @Json(name = "service_type")
     val kmbServiceType: Int?,
-    val nlbRouteId: String?,
-    val routeId: Int,
-    val objectId: Int,
-    //val polyline: List<List<Double>>
-    //val fares: List<Double> decimal Int
+    val stops: List<String>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

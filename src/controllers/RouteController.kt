@@ -74,9 +74,10 @@ class RouteController {
                                     })
                             }
                             countDownLatch.await()
-                            kmbRequestableRoutes.sortWith(compareBy({ it.number.toInt(Character.MAX_RADIX) },
-                                { it.bound },
-                                { it.kmbServiceType })
+                            kmbRequestableRoutes.sortWith(
+                                compareBy({ it.number.toInt(Character.MAX_RADIX) },
+                                    { it.bound },
+                                    { it.kmbServiceType })
                             )
                             sharedData.requestableRoutes.addAll(kmbRequestableRoutes)
                             routesAdded = kmbRequestableRoutes.size
@@ -160,7 +161,7 @@ class RouteController {
                                         Bound.I
                                     }
                                 }
-                                val stops = getRouteStops(Company.NLB, it.routeNo, null, null)
+                                val stops = getRouteStops(Company.NLB, it.routeId, null, null)
                                 sharedData.requestableRoutes.add(
                                     RequestableRoute(
                                         Company.NLB,

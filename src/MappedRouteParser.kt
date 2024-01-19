@@ -1,3 +1,5 @@
+import Paths.Companion.ROUTE_INFO_EXPORT_PATH
+import Paths.Companion.MAPPED_ROUTES_SOURCE_PATH
 import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
@@ -5,7 +7,6 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.MappedRoute
-import data.TestData
 import json_models.CRS
 import json_models.CRSProperties
 import json_models.RouteInfo
@@ -20,13 +21,11 @@ import kotlin.time.measureTime
 
 class GPSRouteParser {
     companion object {
-        private const val SOURCE_PATH = "resources/BusRoute_GEOJSON.zip"
-
         private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
         private val klaxon = Klaxon()
 
         fun readFile() {
-            val file = ZipFile(SOURCE_PATH)
+            val file = ZipFile(MAPPED_ROUTES_SOURCE_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             val mappedRoutes = mutableListOf<MappedRoute>()
             JsonReader(stream.bufferedReader()).use {
@@ -75,7 +74,7 @@ class GPSRouteParser {
                     }
                 }
             }
-            testData.routeInfos.addAll(mappedRoutes.map{it.routeInfo})
+            testData.routeInfos.addAll(mappedRoutes.map { it.routeInfo })
         }
 
         private fun getMappedRoute(reader: JsonReader): MappedRoute {
@@ -153,7 +152,6 @@ class GPSRouteParser {
         }
     }
 }
-const val ROUTE_INFO_EXPORT_PATH = "resources/route_info.json.gz"
 
 fun main() {
     val t = measureTime {

@@ -21,13 +21,7 @@ import java.util.concurrent.CountDownLatch
 
 class StopController {
     companion object {
-        private var stopsAdded = 0
-        private lateinit var countDownLatch: CountDownLatch
-        private const val CtbStopMaxId = 3827
-        private const val CtbStopMinId = 1001
-        private const val totalCtbStops = CtbStopMaxId - CtbStopMinId + 1
         private val mutex = Mutex()
-        // todo get the stop number range from online source 3827
 
         fun getKmbStops(): Int {
             var stopsAdded = 0
@@ -38,7 +32,7 @@ class StopController {
                     val newStops = kmbStops.map { x ->
                         Stop(Company.KMB, x.stop, x.nameEn, x.nameTc, x.nameSc, x.lat.toDouble(), x.long.toDouble())
                     }
-                    sharedData.stops.addAll(newStops)
+                    sharedData.stops.addAll(newStops.sortedBy { it.stopId })
                     stopsAdded = newStops.size
                 }
             } catch (e: Exception) {
@@ -48,96 +42,103 @@ class StopController {
         }
 
         fun getCtbStops(): Int {
-            countDownLatch = CountDownLatch(totalCtbStops)
-            val original = sharedData.stops.size
-            for (i in CtbStopMinId..CtbStopMaxId) {
-                getCtbStop(i)
+            val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }
+            val ctbStopIDs = mutableListOf<String>()
+            val ctbStops = mutableListOf<Stop>()
+
+            ctbRequestableRoutes.forEach {
+                it.stops.forEach { stop -> if (!ctbStopIDs.contains(stop)) ctbStopIDs.add(stop) }
+            }
+            val countDownLatch = CountDownLatch(ctbStopIDs.size)
+
+            val start = System.currentTimeMillis()
+            ctbStopIDs.forEach {
+                try {
+                    val url = "$CTB_ALL_STOP/${String.format("%06d", it.toInt())}"
+                    getAsync(url, onFailure = {
+                        println("Request failed: $url")
+                        countDownLatch.countDown()
+                    }, onResponse = fun(responseBody) {
+                        val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
+                        if (ctbStop?.stop != null) {
+                            val newStop = Stop(
+                                Company.CTB,
+                                ctbStop.stop,
+                                ctbStop.nameEn!!,
+                                ctbStop.nameTc!!,
+                                ctbStop.nameSc!!,
+                                ctbStop.lat!!.toDouble(),
+                                ctbStop.long!!.toDouble()
+                            )
+                            CoroutineScope(Dispatchers.IO).launch {
+                                mutex.withLock {
+                                    ctbStops.add(newStop)
+                                    countDownLatch.countDown()
+                                }
+                            }
+                        } else {
+                            countDownLatch.countDown()
+                        }
+                        val finishedCount = ctbStopIDs.size - countDownLatch.count.toInt()
+                        if (finishedCount % 50 == 0) {
+                            Utils.printPercentage(finishedCount, ctbStopIDs.size, start)
+                        }
+                    })
+                } catch (e: Exception) {
+                    println(
+                        "Error occurred while getting CTB stop \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString()
+                    )
+                }
             }
             countDownLatch.await()
-            return sharedData.stops.size - original
-        }
-
-        private fun getCtbStop(id: Int) {
-            val start = System.currentTimeMillis()
-            try {
-                val url = "$CTB_ALL_STOP/${String.format("%06d", id)}"
-                getAsync(url, onFailure = {
-                    println("Request failed: $url")
-                    countDownLatch.countDown()
-                    printGetCtbStopsProgress(1, start)
-                }, onResponse = fun(responseBody) {
-                    val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
-                    if (ctbStop?.stop != null) {
-                        val newStop = Stop(
-                            Company.CTB,
-                            ctbStop.stop,
-                            ctbStop.nameEn!!,
-                            ctbStop.nameTc!!,
-                            ctbStop.nameSc!!,
-                            ctbStop.lat!!.toDouble(),
-                            ctbStop.long!!.toDouble()
-                        )
-                        CoroutineScope(Dispatchers.IO).launch {
-                            mutex.withLock { sharedData.stops.add(newStop) }
-                        }
-                    }
-                    countDownLatch.countDown()
-                    printGetCtbStopsProgress(50, start)
-                })
-            } catch (e: Exception) {
-                println("Error occurred while getting CTB stop \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
-            }
-        }
-
-        private fun printGetCtbStopsProgress(intervalCount: Int, startTimeInMillis: Long) {
-            val finishedCount = totalCtbStops - countDownLatch.count.toInt()
-            if ((finishedCount % intervalCount) == 0) {
-                Utils.printPercentage(finishedCount, totalCtbStops, startTimeInMillis)
-            }
+            ctbStops.sortBy { it.stopId }
+            sharedData.stops.addAll(ctbStops)
+            return ctbStops.size
         }
 
         fun getNlbStops(): Int {
             val nlbRoutes = sharedData.requestableRoutes.filter { x -> x.company == Company.NLB }
-            stopsAdded = 0
-            countDownLatch = CountDownLatch(nlbRoutes.size)
-            nlbRoutes.forEach { getNlbRouteStop(it.routeId!!) }
-            countDownLatch.await()
-            return stopsAdded
-        }
+            val nlbStops = mutableListOf<Stop>()
 
-        private fun getNlbRouteStop(routeId: String) {
-            val url = "${APIs.NLB_ROUTE_STOP}$routeId"
-            getAsync(url, fun(_) {
-                println("Request failed: $url")
-                countDownLatch.countDown()
-            }, fun(responseBody) {
-                val nlbRouteStopResponse = NlbRouteStopResponse.fromJson(responseBody)
-                val nlbStop = nlbRouteStopResponse?.stops
-                if (!nlbStop.isNullOrEmpty()) {
-                    nlbStop.forEach {
+            val countDownLatch = CountDownLatch(nlbRoutes.size)
+            nlbRoutes.forEach { requestableRoute ->
+                val url = "${APIs.NLB_ROUTE_STOP}${requestableRoute.routeId}"
+                getAsync(url, fun(_) {
+                    println("Request failed: $url")
+                    countDownLatch.countDown()
+                }, fun(responseBody) {
+                    val nlbRouteStopResponse = NlbRouteStopResponse.fromJson(responseBody)
+                    val nlbStop = nlbRouteStopResponse?.stops
+                    if (!nlbStop.isNullOrEmpty()) {
                         CoroutineScope(Dispatchers.IO).launch {
                             mutex.withLock {
-                                if (!sharedData.stops.any { x -> (x.stopId == it.stop) }) {
-                                    sharedData.stops.add(
-                                        Stop(
-                                            Company.NLB,
-                                            it.stop,
-                                            it.stopNameE,
-                                            it.stopNameC,
-                                            it.stopNameS,
-                                            it.latitude.toDouble(),
-                                            it.longitude.toDouble()
+                                nlbStop.forEach {
+                                    if (!nlbStops.any { x -> (x.stopId == it.stop) }) {
+                                        nlbStops.add(
+                                            Stop(
+                                                Company.NLB,
+                                                it.stop,
+                                                it.stopNameE,
+                                                it.stopNameC,
+                                                it.stopNameS,
+                                                it.latitude.toDouble(),
+                                                it.longitude.toDouble()
+                                            )
                                         )
-                                    )
-                                    stopsAdded++
-                                    // println("NLB Stop added: ${it.stopId} ($stopsAdded)")
+                                    }
                                 }
+                                countDownLatch.countDown()
                             }
                         }
+                    } else {
+                        countDownLatch.countDown()
                     }
-                }
-                countDownLatch.countDown()
-            })
+                })
+            }
+            countDownLatch.await()
+            nlbStops.sortBy { it.stopId }
+            sharedData.stops.addAll(nlbStops)
+            return nlbStops.size
         }
     }
 }

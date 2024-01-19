@@ -35,11 +35,11 @@ data class CRSProperties(
 
 data class GPSRoute(
     val type: String,
-    val geometry: Geometry,
+    val mappedRouteGeometry: MappedRouteGeometry,
     val properties: RouteInfo
 )
 
-data class Geometry(
+data class MappedRouteGeometry(
     val type: String,
     val coordinates: List<List<List<Double>>>
 )

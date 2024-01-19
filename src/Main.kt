@@ -1,3 +1,4 @@
+import Paths.Companion.DB_EXPORT_PATH
 import controllers.RouteController.Companion.getRoutes
 import controllers.StopController.Companion.getCtbStops
 import controllers.StopController.Companion.getKmbStops
@@ -8,8 +9,6 @@ import java.util.zip.GZIPOutputStream
 import kotlin.text.Charsets.UTF_8
 import kotlin.time.measureTime
 
-const val DB_EXPORT_PATH = "resources/HKBuserDB.json.gz"
-
 // todo proper log
 // todo not finishing at the end, okhttp?
 fun main() {
@@ -18,12 +17,12 @@ fun main() {
     executeWithCount("Getting CTB routes...") { getRoutes(Company.CTB) }
     executeWithCount("Getting NLB routes...") { getRoutes(Company.NLB) }
 
-    // 2. Get Stops  todo MTRB stops
+//    // 2. Get Stops  todo MTRB stops
     executeWithCount("Getting KMB stops...") { getKmbStops() }
     executeWithCount("Getting CTB stops...") { getCtbStops() }
     executeWithCount("Getting NLB stops...") { getNlbStops() }
 
-    // 3. Get Route-stops & fare
+    // 3. Get map and fare
 
     // 4. Write to Json.gz
     execute("Writing to \"$DB_EXPORT_PATH\"...") {
@@ -38,7 +37,7 @@ fun main() {
 }
 
 fun executeWithCount(description: String, action: () -> Int) {
-    println(description)
+    print(description)
     var count: Int
     val t = measureTime {
         count = action()
@@ -47,7 +46,7 @@ fun executeWithCount(description: String, action: () -> Int) {
 }
 
 fun execute(description: String, action: () -> Unit) {
-    println(description)
+    print(description)
     val t = measureTime { action() }
     println("finished in $t")
 }

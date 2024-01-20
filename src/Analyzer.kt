@@ -5,7 +5,6 @@ import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import controllers.StopController.Companion.validateStops
 import data.*
 import json_models.BusStopRaw
 import json_models.RouteInfo
@@ -24,8 +23,7 @@ suspend fun main() {
         loadData()
     }
     println(
-        "Mapped Routes:${testData.routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, " +
-                "Requestable stops:${stops.size}, loaded in $t"
+        "Mapped Routes:${testData.routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, " + "Requestable stops:${stops.size}, loaded in $t"
     )
 
     val routes = mutableListOf<Route>()
@@ -34,83 +32,154 @@ suspend fun main() {
     val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }.toMutableList()
     println("KMB:${kmbRequestableRoutes.size}, CTB:${ctbRequestableRoutes.size}, NLB:${nlbRequestableRoutes.size}")
 
-    val kmbNoMatch = mutableListOf<RequestableRoute>()
-    val ctbJointRoutes = mutableListOf<RequestableRoute>()
+    val kmbUnmappedRoutes = mutableListOf<RequestableRoute>()
+    val ctbUnmappedRoutes = mutableListOf<RequestableRoute>()
+    val nlbUnmappedRoutes = mutableListOf<RequestableRoute>()
+    val unmappedJointRoutes = mutableListOf<RequestableRoute>()
+    val jointRoutes = mutableListOf<RequestableRoute>()
 
     kmbRequestableRoutes.forEach {
-        var routeInfo: RouteInfo? = null
-
-        val origin = sharedData.requestableStops.find { stop -> stop.stopId == it.stops.first() }
-        val dest = sharedData.requestableStops.find { stop -> stop.stopId == it.stops.last() }
-
-        val candidates = testData.routeInfos.filter { info ->
-            (info.companyCode.contains(it.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == it.number
-        }
-        if (origin != null && dest != null) {
-            routeInfo = candidates.find { info ->
-                val routeInfoOrigin = stops.find { stop -> stop.stopId == info.stStopId }
-                val routeInfoDest = stops.find { stop -> stop.stopId == info.edStopId }
-                val originDistance = if (routeInfoOrigin != null) Utils.distanceInMeters(
-                    origin.latLng,
-                    routeInfoOrigin.latLng
-                ) else Double.MAX_VALUE
-                val destDistance = if (routeInfoDest != null) Utils.distanceInMeters(
-                    dest.latLng,
-                    routeInfoDest.latLng
-                ) else Double.MAX_VALUE
-
-//                if(it.number == "A41" && it.bound == Bound.O) {
-//                    println("${it.number},${it.bound},${it.kmbServiceType}")
-//                    println("ori:${origin.latLng}, ${routeInfoOrigin!!.latLng}")
-//                    println(Utils.distanceInMeters(origin.latLng, routeInfoOrigin.latLng))
-//                    println("dest:${dest.latLng}, ${routeInfoDest!!.latLng}")
-//                    println(Utils.distanceInMeters(dest.latLng, routeInfoDest.latLng))
-//                }
-                originDistance <= MAX_ERROR_DISTANCE_METERS && destDistance <= MAX_ERROR_DISTANCE_METERS
+        val routeInfo: RouteInfo? = matchRouteInfo(it)
+        val candidates = getCandidates(it)
+        val companyCode = if (candidates.isEmpty()) it.company.value else candidates.last().companyCode
+        if (companyCode.contains("+")) {
+            val ctbRoute = ctbRequestableRoutes.find { x -> x.number == it.number && x.bound == it.bound }
+            if (ctbRoute == null) {
+                println("No match for CTB joint route: ${it.number}")
+            } else {
+                // Remove merged route from CTB's list
+                // todo need to match CTB stops and put into the final Route item, match gps coordinates
+                jointRoutes.forEach { ctbRequestableRoutes.removeIf { e -> it.number == e.number && it.bound == e.bound } }
+                jointRoutes.add(it)
             }
         }
 
         if (routeInfo != null) {
             testData.routeInfos.remove(routeInfo)
-            if (routeInfo.companyCode.contains("+")) {
-                val ctbRoute = ctbRequestableRoutes.find { x -> x.number == it.number && x.bound == it.bound }
-                if (ctbRoute == null) {
-                    println("No match for CTB joint route: ${it.number}")
-                } else {
-                    ctbJointRoutes.add(it)
-                }
-            }
-            routes.add(
-                Route(
-                    routeInfo.companyCode,
-                    it.number,
-                    it.bound,
-                    routeInfo.stStopId,
-                    it.originEn,
-                    it.originChiT,
-                    it.originChiS,
-                    routeInfo.edStopId,
-                    it.destEn,
-                    it.destChiT,
-                    it.destChiS,
-                    it.kmbServiceType,
-                    null,
-                    routeInfo.routeId,
-                    routeInfo.objectId
-                )
-            )
         } else {
-            // todo add route
-            kmbNoMatch.add(it)
+            if (companyCode.contains("+")) {
+                unmappedJointRoutes.add(it)
+            } else {
+                kmbUnmappedRoutes.add(it)
+            }
         }
+        routes.add(
+            Route(
+                companyCode,
+                it.number,
+                it.bound,
+                it.originEn,
+                it.originChiT,
+                it.originChiS,
+                it.destEn,
+                it.destChiT,
+                it.destChiS,
+                it.kmbServiceType,
+                null,
+                routeInfo?.routeId,
+                routeInfo?.objectId,
+                it.stops
+            )
+        )
     }
-    // Remove merged route from CTB's list
-    ctbJointRoutes.forEach { ctbRequestableRoutes.removeIf { e -> it.number == e.number && it.bound == e.bound } }
+    println("KMB routes mapped: ${routes.size - kmbUnmappedRoutes.size}, unmapped: ${kmbUnmappedRoutes.size}")
+    println("Joint routes: ${jointRoutes.size} mapped: ${jointRoutes.size - unmappedJointRoutes.size}, unmapped: ${unmappedJointRoutes.size}")
 
-    println("KMB Routes added: ${routes.size}")
-    println("kmbNoMatch: ${kmbNoMatch.size}")
-    kmbNoMatch.forEach { print("${it.number}-${it.bound},") }
-    println("\nctbRequestableRoutes: ${ctbRequestableRoutes.size}")
+    ctbRequestableRoutes.forEach {
+        val routeInfo: RouteInfo? = matchRouteInfo(it)
+        val candidates = getCandidates(it)
+        val companyCode = if (candidates.isEmpty()) it.company.value else candidates.last().companyCode
+        if (companyCode.contains("+")) println("$companyCode,${it.number},${it.bound}") //todo
+        if (routeInfo != null) {
+            testData.routeInfos.remove(routeInfo)
+        } else {
+            ctbUnmappedRoutes.add(it)
+        }
+        routes.add(
+            Route(
+                companyCode,
+                it.number,
+                it.bound,
+                it.originEn,
+                it.originChiT,
+                it.originChiS,
+                it.destEn,
+                it.destChiT,
+                it.destChiS,
+                it.kmbServiceType,
+                null,
+                routeInfo?.routeId,
+                routeInfo?.objectId,
+                it.stops
+            )
+        )
+    }
+    println("CTB routes mapped: ${ctbRequestableRoutes.size - ctbUnmappedRoutes.size}, unmapped: ${ctbUnmappedRoutes.size}")
+
+    nlbRequestableRoutes.forEach {
+        val routeInfo: RouteInfo? = matchRouteInfo(it)
+        if (routeInfo != null) {
+            testData.routeInfos.remove(routeInfo)
+        } else {
+            nlbUnmappedRoutes.add(it)
+        }
+        routes.add(
+            Route(
+                Company.NLB.value,
+                it.number,
+                it.bound,
+                it.originEn,
+                it.originChiT,
+                it.originChiS,
+                it.destEn,
+                it.destChiT,
+                it.destChiS,
+                it.kmbServiceType,
+                null,
+                routeInfo?.routeId,
+                routeInfo?.objectId,
+                it.stops
+            )
+        )
+    }
+    println("NLB routes mapped: ${nlbRequestableRoutes.size - nlbUnmappedRoutes.size}, unmapped: ${nlbUnmappedRoutes.size}")
+}
+
+private fun getCandidates(requestableRoute: RequestableRoute): List<RouteInfo> = when (requestableRoute.company) {
+    Company.KMB -> testData.routeInfos.filter { info ->
+        (info.companyCode.contains(requestableRoute.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == requestableRoute.number
+    }
+
+    Company.CTB -> testData.routeInfos.filter { info ->
+        info.companyCode.contains(requestableRoute.company.value) && info.routeNameE == requestableRoute.number
+    }
+
+    Company.NLB -> testData.routeInfos.filter { info ->
+        info.companyCode.contains(requestableRoute.company.value) && info.routeNameE == requestableRoute.number
+    }
+
+    Company.MTRB -> TODO()
+}
+
+private fun matchRouteInfo(requestableRoute: RequestableRoute): RouteInfo? {
+    val origin = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.first() }
+    val dest = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.last() }
+
+    return if (origin != null && dest != null) {
+        getCandidates(requestableRoute).find { info ->
+            val routeInfoOrigin = stops.find { stop -> stop.stopId == info.stStopId }
+            val routeInfoDest = stops.find { stop -> stop.stopId == info.edStopId }
+            val originDistance = if (routeInfoOrigin != null) Utils.distanceInMeters(
+                origin.latLng, routeInfoOrigin.latLng
+            ) else Double.MAX_VALUE
+            val destDistance = if (routeInfoDest != null) Utils.distanceInMeters(
+                dest.latLng, routeInfoDest.latLng
+            ) else Double.MAX_VALUE
+            originDistance <= MAX_ERROR_DISTANCE_METERS && destDistance <= MAX_ERROR_DISTANCE_METERS
+        }
+    } else {
+        null
+    }
 }
 
 suspend fun loadData() {
@@ -128,10 +197,9 @@ suspend fun loadData() {
             val dbFile = File(DB_EXPORT_PATH)
             val dbStream = GZIPInputStream(dbFile.inputStream())
             val jsonString = dbStream.bufferedReader().use { it.readText() }
-            val routes = klaxon.parse<SharedData>(jsonString)!!.requestableRoutes
-            val stops = klaxon.parse<SharedData>(jsonString)!!.requestableStops
-            sharedData.requestableRoutes.addAll(routes)
-            sharedData.requestableStops.addAll(stops)
+            val data = klaxon.parse<SharedData>(jsonString)
+            sharedData.requestableRoutes.addAll(data!!.requestableRoutes)
+            sharedData.requestableStops.addAll(data.requestableStops)
         }
         launch {
             val crsTransformationAdapter =

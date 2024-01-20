@@ -1,3 +1,4 @@
+import data.LatLng
 import kotlin.math.cos
 import kotlin.math.sqrt
 import kotlin.time.DurationUnit
@@ -11,11 +12,11 @@ class Utils {
             println("($currentCount/$totalCount) ${String.format("%.1f", percentage)} % in $timeElapse")
         }
 
-        fun distanceInMeters(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
-            val lat1Rad = Math.toRadians(lat1)
-            val lat2Rad = Math.toRadians(lat2)
-            val lon1Rad = Math.toRadians(lon1)
-            val lon2Rad = Math.toRadians(lon2)
+        fun distanceInMeters(latLng1: LatLng, latLng2: LatLng): Double {
+            val lat1Rad = Math.toRadians(latLng1.lat)
+            val lat2Rad = Math.toRadians(latLng2.lat)
+            val lon1Rad = Math.toRadians(latLng1.long)
+            val lon2Rad = Math.toRadians(latLng2.long)
 
             val x = (lon2Rad - lon1Rad) * cos((lat1Rad + lat2Rad) / 2)
             val y = (lat2Rad - lat1Rad)

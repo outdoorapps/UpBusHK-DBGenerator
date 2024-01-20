@@ -9,8 +9,7 @@ data class RequestableStop(
     val engName: String,
     val chiTName: String,
     val chiSName: String,
-    val lat: Double,
-    val long: Double
+    val latLng: LatLng
 ) {
     public fun toJson() = Klaxon().toJsonString(this)
 }

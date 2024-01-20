@@ -6,7 +6,9 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
+import PatchData
 import Utils
+import data.LatLng
 import data.RequestableStop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -30,7 +32,30 @@ class StopController {
                 val kmbStops = KmbStopResponse.fromJson(response)?.data
                 if (!kmbStops.isNullOrEmpty()) {
                     val newStops = kmbStops.map { x ->
-                        RequestableStop(Company.KMB, x.stop, x.nameEn, x.nameTc, x.nameSc, x.lat.toDouble(), x.long.toDouble())
+                        RequestableStop(
+                            Company.KMB,
+                            x.stop,
+                            x.nameEn,
+                            x.nameTc,
+                            x.nameSc,
+                            LatLng(x.lat.toDouble(), x.long.toDouble())
+                        )
+                    }.toMutableList()
+                    PatchData.stopPatchMap.forEach { (missingStopId, pairingStopId) ->
+                        if (!newStops.any { stop -> stop.stopId == missingStopId }) {
+                            val pairingStop =
+                                newStops.find { requestableStop -> requestableStop.stopId == pairingStopId }
+                            if (pairingStop != null) newStops.add(
+                                RequestableStop(
+                                    Company.KMB,
+                                    missingStopId,
+                                    pairingStop.engName,
+                                    pairingStop.chiTName,
+                                    pairingStop.chiSName,
+                                    pairingStop.latLng
+                                )
+                            )
+                        }
                     }
                     sharedData.requestableStops.addAll(newStops.sortedBy { it.stopId })
                     stopsAdded = newStops.size
@@ -49,7 +74,8 @@ class StopController {
             ctbRequestableRoutes.forEach {
                 it.stops.forEach { stop -> if (!ctbStopIDs.contains(stop)) ctbStopIDs.add(stop) }
             }
-            val countDownLatch = CountDownLatch(ctbStopIDs.size)
+            val totalCount = ctbStopIDs.size
+            val countDownLatch = CountDownLatch(totalCount)
 
             val start = System.currentTimeMillis()
             ctbStopIDs.forEach {
@@ -67,8 +93,7 @@ class StopController {
                                 ctbStop.nameEn!!,
                                 ctbStop.nameTc!!,
                                 ctbStop.nameSc!!,
-                                ctbStop.lat!!.toDouble(),
-                                ctbStop.long!!.toDouble()
+                                LatLng(ctbStop.lat!!.toDouble(), ctbStop.long!!.toDouble())
                             )
                             CoroutineScope(Dispatchers.IO).launch {
                                 mutex.withLock {
@@ -79,9 +104,9 @@ class StopController {
                         } else {
                             countDownLatch.countDown()
                         }
-                        val finishedCount = ctbStopIDs.size - countDownLatch.count.toInt()
-                        if (finishedCount % 50 == 0) {
-                            Utils.printPercentage(finishedCount, ctbStopIDs.size, start)
+                        val finishCount = totalCount - countDownLatch.count.toInt()
+                        if (finishCount % 50 == 0) {
+                            Utils.printPercentage(finishCount, totalCount, start)
                         }
                     })
                 } catch (e: Exception) {
@@ -121,8 +146,7 @@ class StopController {
                                                 it.stopNameE,
                                                 it.stopNameC,
                                                 it.stopNameS,
-                                                it.latitude.toDouble(),
-                                                it.longitude.toDouble()
+                                                LatLng(it.latitude.toDouble(), it.longitude.toDouble())
                                             )
                                         )
                                     }
@@ -139,6 +163,21 @@ class StopController {
             nlbStops.sortBy { it.stopId }
             sharedData.requestableStops.addAll(nlbStops)
             return nlbStops.size
+        }
+
+        fun validateStops(): List<String> {
+            print("Validating stops...")
+            val noMatchStops = mutableListOf<String>()
+            sharedData.requestableRoutes.forEach {
+                it.stops.forEach { stop ->
+                    if (!sharedData.requestableStops.any { requestableStop -> requestableStop.stopId == stop }) {
+                        if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
+                    }
+                }
+            }
+            if (noMatchStops.size > 0) println("Stops in bus routes but not found in the database: $noMatchStops")
+            else println("Success")
+            return noMatchStops
         }
     }
 }

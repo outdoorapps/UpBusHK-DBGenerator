@@ -1,3 +1,3 @@
 package data
 
-data class Stop(val stopId: Int, val latLng: List<Double>)
+data class Stop(val stopId: Int, val latLng: LatLng)

@@ -1,5 +1,6 @@
 import Paths.Companion.DB_EXPORT_PATH
 import controllers.RouteController.Companion.getRoutes
+import controllers.StopController
 import controllers.StopController.Companion.getCtbStops
 import controllers.StopController.Companion.getKmbStops
 import controllers.StopController.Companion.getNlbStops
@@ -17,10 +18,11 @@ fun main() {
     executeWithCount("Getting CTB routes...") { getRoutes(Company.CTB) }
     executeWithCount("Getting NLB routes...") { getRoutes(Company.NLB) }
 
-//    // 2. Get Stops  todo MTRB stops
+    // 2. Get Stops  todo MTRB stops
     executeWithCount("Getting KMB stops...") { getKmbStops() }
     executeWithCount("Getting CTB stops...") { getCtbStops() }
     executeWithCount("Getting NLB stops...") { getNlbStops() }
+    StopController.validateStops()
 
     // 3. Get map and fare
 

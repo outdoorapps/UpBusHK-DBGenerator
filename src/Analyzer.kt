@@ -5,11 +5,8 @@ import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import com.programmerare.crsTransformations.coordinate.northingEasting
-import data.RequestableRoute
-import data.Route
-import data.Stop
-import data.TestData
+import controllers.StopController.Companion.validateStops
+import data.*
 import json_models.BusStopRaw
 import json_models.RouteInfo
 import kotlinx.coroutines.coroutineScope
@@ -21,80 +18,55 @@ import kotlin.time.measureTime
 
 val testData = TestData()
 val stops = mutableListOf<Stop>()
-const val MAX_ERROR_DISTANCE_METERS = 130.0 //todo 220 top at, 2E should have matched
+const val MAX_ERROR_DISTANCE_METERS = 150.0
 suspend fun main() {
     val t = measureTime {
         loadData()
     }
-    println("Mapped Routes:${testData.routeInfos.size}, Requestable:${sharedData.requestableRoutes.size}, Bus stops:${stops.size}, loaded in $t")
+    println(
+        "Mapped Routes:${testData.routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, " +
+                "Requestable stops:${stops.size}, loaded in $t"
+    )
 
     val routes = mutableListOf<Route>()
     val kmbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.KMB }.toMutableList()
     val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }.toMutableList()
     val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }.toMutableList()
+    println("KMB:${kmbRequestableRoutes.size}, CTB:${ctbRequestableRoutes.size}, NLB:${nlbRequestableRoutes.size}")
 
     val kmbNoMatch = mutableListOf<RequestableRoute>()
     val ctbJointRoutes = mutableListOf<RequestableRoute>()
 
-    println("KMB:${kmbRequestableRoutes.size}")//todo
-
     kmbRequestableRoutes.forEach {
-        // 1. Determine routeSeq (1 or 2)
         var routeInfo: RouteInfo? = null
 
         val origin = sharedData.requestableStops.find { stop -> stop.stopId == it.stops.first() }
         val dest = sharedData.requestableStops.find { stop -> stop.stopId == it.stops.last() }
 
-        val routeInfo1 = testData.routeInfos.find { info ->
-            (info.companyCode.contains(it.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == it.number && info.routeSeq == 1
+        val candidates = testData.routeInfos.filter { info ->
+            (info.companyCode.contains(it.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == it.number
         }
-        val routeInfo2 = testData.routeInfos.find { info ->
-            (info.companyCode.contains(it.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == it.number && info.routeSeq == 2
-        }
-
         if (origin != null && dest != null) {
-            if (routeInfo1 != null) {
-                val routeInfoOrigin1 = stops.find { stop -> stop.stopId == routeInfo1.stStopId }
-                val routeInfoDest1 = stops.find { stop -> stop.stopId == routeInfo1.edStopId }
+            routeInfo = candidates.find { info ->
+                val routeInfoOrigin = stops.find { stop -> stop.stopId == info.stStopId }
+                val routeInfoDest = stops.find { stop -> stop.stopId == info.edStopId }
+                val originDistance = if (routeInfoOrigin != null) Utils.distanceInMeters(
+                    origin.latLng,
+                    routeInfoOrigin.latLng
+                ) else Double.MAX_VALUE
+                val destDistance = if (routeInfoDest != null) Utils.distanceInMeters(
+                    dest.latLng,
+                    routeInfoDest.latLng
+                ) else Double.MAX_VALUE
 
-//                if (it.number == "E41") {
-//                    println("ori:${origin.lat}, ${origin.long}, ${routeInfoOrigin1!!.latLng[0]}, ${routeInfoOrigin1.latLng[1]}")
-//                    println(
-//                        Utils.distanceInMeters(
-//                            origin.lat, origin.long, routeInfoOrigin1.latLng[0], routeInfoOrigin1.latLng[1]
-//                        )
-//                    )
-//                    println("dest:${dest.lat}, ${dest.long}, ${routeInfoDest1!!.latLng[0]}, ${routeInfoDest1.latLng[1]}")
-//                    println(
-//                        Utils.distanceInMeters(
-//                            dest.lat, dest.long, routeInfoDest1.latLng[0], routeInfoDest1.latLng[1]
-//                        )
-//                    )
+//                if(it.number == "A41" && it.bound == Bound.O) {
+//                    println("${it.number},${it.bound},${it.kmbServiceType}")
+//                    println("ori:${origin.latLng}, ${routeInfoOrigin!!.latLng}")
+//                    println(Utils.distanceInMeters(origin.latLng, routeInfoOrigin.latLng))
+//                    println("dest:${dest.latLng}, ${routeInfoDest!!.latLng}")
+//                    println(Utils.distanceInMeters(dest.latLng, routeInfoDest.latLng))
 //                }
-
-                // Use OR for non-strict matching
-                if ((routeInfoOrigin1 != null && Utils.distanceInMeters(
-                        origin.lat, origin.long, routeInfoOrigin1.latLng[0], routeInfoOrigin1.latLng[1]
-                    ) <= MAX_ERROR_DISTANCE_METERS) || (routeInfoDest1 != null && Utils.distanceInMeters(
-                        dest.lat, dest.long, routeInfoDest1.latLng[0], routeInfoDest1.latLng[1]
-                    ) <= MAX_ERROR_DISTANCE_METERS)
-                ) {
-                    routeInfo = routeInfo1
-                }
-            }
-            if (routeInfo == null) {
-                if (routeInfo2 != null) {
-                    val routeInfoOrigin2 = stops.find { stop -> stop.stopId == routeInfo2.stStopId }
-                    val routeInfoDest2 = stops.find { stop -> stop.stopId == routeInfo2.edStopId }
-                    if ((routeInfoOrigin2 != null && Utils.distanceInMeters(
-                            origin.lat, origin.long, routeInfoOrigin2.latLng[0], routeInfoOrigin2.latLng[1]
-                        ) <= MAX_ERROR_DISTANCE_METERS) || (routeInfoDest2 != null && Utils.distanceInMeters(
-                            dest.lat, dest.long, routeInfoDest2.latLng[0], routeInfoDest2.latLng[1]
-                        ) <= MAX_ERROR_DISTANCE_METERS)
-                    ) {
-                        routeInfo = routeInfo2
-                    }
-                }
+                originDistance <= MAX_ERROR_DISTANCE_METERS && destDistance <= MAX_ERROR_DISTANCE_METERS
             }
         }
 
@@ -135,9 +107,9 @@ suspend fun main() {
     // Remove merged route from CTB's list
     ctbJointRoutes.forEach { ctbRequestableRoutes.removeIf { e -> it.number == e.number && it.bound == e.bound } }
 
-    println("Routes added: ${routes.size}")
+    println("KMB Routes added: ${routes.size}")
     println("kmbNoMatch: ${kmbNoMatch.size}")
-    //kmbNoMatch.forEach { print("${it.number}-${it.bound},") }
+    kmbNoMatch.forEach { print("${it.number}-${it.bound},") }
     println("\nctbRequestableRoutes: ${ctbRequestableRoutes.size}")
 }
 
@@ -178,9 +150,7 @@ suspend fun loadData() {
                     ), EpsgNumber.WORLD__WGS_84__4326
                 )
                 stops.add(
-                    Stop(
-                        it.properties.stopId, listOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
-                    )
+                    Stop(it.properties.stopId, LatLng(crsCoordinate.getLatitude(), crsCoordinate.getLongitude()))
                 )
             }
             stops.sortBy { x -> x.stopId }

@@ -74,10 +74,9 @@ class RouteController {
                                     })
                             }
                             countDownLatch.await()
-                            kmbRequestableRoutes.sortWith(
-                                compareBy({ it.number.toInt(Character.MAX_RADIX) },
-                                    { it.bound },
-                                    { it.kmbServiceType })
+                            kmbRequestableRoutes.sortWith(compareBy({ it.number.toInt(Character.MAX_RADIX) },
+                                { it.bound },
+                                { it.kmbServiceType })
                             )
                             sharedData.requestableRoutes.addAll(kmbRequestableRoutes)
                             routesAdded = kmbRequestableRoutes.size

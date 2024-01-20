@@ -13,5 +13,3 @@ data class TestData(val routeInfos: MutableList<RouteInfo> = mutableListOf()) {
 data class MappedRoute(val routeInfo: RouteInfo, val path: List<CrsCoordinate>) {
     fun toJson() = klaxon.toJsonString(this)
 }
-
-data class LatLng(val lat: Double, val long: Double)

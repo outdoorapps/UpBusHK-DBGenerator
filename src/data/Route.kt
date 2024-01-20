@@ -20,8 +20,8 @@ data class Route(
     @Json(name = "service_type")
     val kmbServiceType: Int?,
     val nlbRouteId: String?,
-    val routeId: Int,
-    val objectId: Int,
+    val routeId: Int?,
+    val objectId: Int?,
     //val polyline: List<List<Double>>
     //val fares: List<Double> decimal Int
 ) {

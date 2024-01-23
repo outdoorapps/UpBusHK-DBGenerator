@@ -74,9 +74,10 @@ class RouteController {
                                     })
                             }
                             countDownLatch.await()
-                            kmbRequestableRoutes.sortWith(compareBy({ it.number.toInt(Character.MAX_RADIX) },
-                                { it.bound },
-                                { it.kmbServiceType })
+                            kmbRequestableRoutes.sortWith(
+                                compareBy({ it.number.toInt(Character.MAX_RADIX) },
+                                    { it.bound },
+                                    { it.kmbServiceType })
                             )
                             sharedData.requestableRoutes.addAll(kmbRequestableRoutes)
                             routesAdded = kmbRequestableRoutes.size
@@ -104,12 +105,12 @@ class RouteController {
                                                 it.route,
                                                 bound,
                                                 null,
-                                                it.origEn,
-                                                it.origTc,
-                                                it.origSc,
-                                                it.destEn,
-                                                it.destTc,
-                                                it.destSc,
+                                                if (bound == Bound.O) it.origEn else it.destEn,
+                                                if (bound == Bound.O) it.origTc else it.destTc,
+                                                if (bound == Bound.O) it.origSc else it.destSc,
+                                                if (bound == Bound.O) it.destEn else it.origEn,
+                                                if (bound == Bound.O) it.destTc else it.origTc,
+                                                if (bound == Bound.O) it.destSc else it.origSc,
                                                 null,
                                                 stops
                                             )

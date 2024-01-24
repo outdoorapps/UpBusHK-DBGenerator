@@ -18,7 +18,8 @@ data class Route(
     val nlbRouteId: String?,
     val mappedRouteId: Int?,
     val mappedObjectId: Int?,
-    val stops: List<String>
+    val stops: List<String>,
+    val secondaryStops: List<String>
     //val polyline: List<List<Double>>
     //val fares: List<Double> decimal Int
 ) {

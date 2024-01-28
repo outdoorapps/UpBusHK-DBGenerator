@@ -2,7 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/HKBuserDBGenerator.iml" filepath="$PROJECT_DIR$/HKBuserDBGenerator.iml" />
+      <module fileurl="file://$PROJECT_DIR$/UpBusHK-DBGenerator.iml" filepath="$PROJECT_DIR$/UpBusHK-DBGenerator.iml" />
     </modules>
   </component>
 </project>

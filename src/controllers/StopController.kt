@@ -7,7 +7,6 @@ import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
 import Utils
-import data.LatLng
 import data.RequestableStop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -37,7 +36,7 @@ class StopController {
                             x.nameEn,
                             x.nameTc,
                             x.nameSc,
-                            LatLng(x.lat.toDouble(), x.long.toDouble())
+                            mutableListOf(x.lat.toDouble(), x.long.toDouble())
                         )
                     }
                     sharedData.requestableStops.addAll(newStops.sortedBy { it.stopId })
@@ -76,7 +75,7 @@ class StopController {
                                 ctbStop.nameEn!!,
                                 ctbStop.nameTc!!,
                                 ctbStop.nameSc!!,
-                                LatLng(ctbStop.lat!!.toDouble(), ctbStop.long!!.toDouble())
+                                mutableListOf(ctbStop.lat!!.toDouble(), ctbStop.long!!.toDouble())
                             )
                             CoroutineScope(Dispatchers.IO).launch {
                                 mutex.withLock {
@@ -129,7 +128,7 @@ class StopController {
                                                 it.stopNameE,
                                                 it.stopNameC,
                                                 it.stopNameS,
-                                                LatLng(it.latitude.toDouble(), it.longitude.toDouble())
+                                                mutableListOf(it.latitude.toDouble(), it.longitude.toDouble())
                                             )
                                         )
                                     }

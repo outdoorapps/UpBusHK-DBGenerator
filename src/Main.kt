@@ -1,7 +1,6 @@
 import Patch.Companion.patchRoutes
 import Patch.Companion.patchStops
 import Paths.Companion.DB_EXPORT_PATH
-import Paths.Companion.DB_RAW_EXPORT_PATH
 import Paths.Companion.DB_ROUTE_ONLY_EXPORT_PATH
 import controllers.RouteController.Companion.getRoutes
 import controllers.StopController
@@ -34,20 +33,14 @@ fun main() {
     executeWithCount("Getting NLB stops...") { getNlbStops() }
     StopController.validateStops()
 
-    // 3. Get map and fare
-
-    execute("Writing raw database (for debugging) \"$DB_RAW_EXPORT_PATH\"...") {
-        writeToFile(sharedData.toJson(), DB_RAW_EXPORT_PATH)
-    }
-
-    // 4. Patch database
+    // 3. Patch database
     execute("Patching database...") {
         patchRoutes(sharedData.requestableRoutes)
         patchStops(sharedData.requestableStops)
     }
 
-    // 5. Write database
-    execute("Writing patched database \"$DB_EXPORT_PATH\"...") {
+    // 4. Write intermediate database
+    execute("Writing database \"$DB_EXPORT_PATH\"...") {
         writeToFile(sharedData.toJson(), DB_EXPORT_PATH)
     }
 
@@ -55,6 +48,8 @@ fun main() {
         val sharedDataRouteOnly = sharedData.copy(requestableStops = mutableListOf())
         writeToFile(sharedDataRouteOnly.toJson(), DB_ROUTE_ONLY_EXPORT_PATH)
     }
+
+    // todo get fare
 }
 
 fun executeWithCount(description: String, action: () -> Int) {

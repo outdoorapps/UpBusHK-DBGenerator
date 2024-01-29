@@ -309,7 +309,7 @@ suspend fun main() {
                     govRecordStops.add(
                         GovRecordStop(
                             it.properties.stopId,
-                            LatLng(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
+                            mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
                         )
                     )
                 }
@@ -328,9 +328,9 @@ suspend fun main() {
 
     execute("Rounding LatLng...") {
         val stops = sharedData.requestableStops.map {
-            val lat = it.latLng.lat.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
-            val long = it.latLng.long.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
-            it.copy(latLng = LatLng(lat, long))
+            val lat = it.latLng[0].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            val long = it.latLng[1].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            it.copy(latLng = mutableListOf(lat, long))
         }
         sharedData.requestableStops.clear()
         sharedData.requestableStops.addAll(stops)

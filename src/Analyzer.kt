@@ -1,25 +1,30 @@
+import Paths.Companion.ARCHIVE_EXPORT_PATH
 import Paths.Companion.BUS_STOPS_SOURCE_PATH
-import Paths.Companion.DB_EXPORT_PATH
-import Paths.Companion.DB_FINAL_EXPORT_PATH
+import Paths.Companion.PATH_DB_EXPORT_PATH
+import Paths.Companion.REQUESTABLES_EXPORT_PATH
+import Paths.Companion.ROUTES_STOPS_DB_EXPORT_PATH
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
+import Utils.Companion.execute
+import Utils.Companion.writeToXZ
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.*
 import json_models.BusStopRaw
-import json_models.RouteInfo
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
 import java.math.RoundingMode
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipFile
 import kotlin.time.measureTime
 
-val testData = TestData()
-
-class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
+class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRecordStops: MutableList<GovRecordStop>) {
     companion object {
         const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
         const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
@@ -28,19 +33,19 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
     private val kmbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.KMB }
     private val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }
     private val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }
-    private val jointRouteNumbers = mutableListOf<String>()
+    private val jointRouteNumbers = mutableSetOf<String>()
     val routes = mutableListOf<Route>()
 
     // For stats
-    private val kmbUnmappedRoutes = mutableListOf<RequestableRoute>()
-    private val ctbUnmappedRoutes = mutableListOf<RequestableRoute>()
-    private val nlbUnmappedRoutes = mutableListOf<RequestableRoute>()
+    private val unmappedKmbRoutes = mutableListOf<RequestableRoute>()
+    private val unmappedCtbRoutes = mutableListOf<RequestableRoute>()
+    private val unmappedNlbRoutes = mutableListOf<RequestableRoute>()
     private val unmappedJointRoutes = mutableListOf<RequestableRoute>()
     private val jointRoutes = mutableListOf<RequestableRoute>()
 
     init {
-        testData.routeInfos.forEach {
-            if (it.companyCode.contains("+") && !jointRouteNumbers.contains(it.routeNameE)) {
+        routeInfos.forEach {
+            if (it.companyCode.contains("+")) {
                 jointRouteNumbers.add(it.routeNameE)
             }
         }
@@ -52,15 +57,15 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
 
     private fun getRouteInfoCandidates(requestableRoute: RequestableRoute): List<RouteInfo> =
         when (requestableRoute.company) {
-            Company.KMB -> testData.routeInfos.filter { info ->
+            Company.KMB -> routeInfos.filter { info ->
                 (info.companyCode.contains(requestableRoute.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == requestableRoute.number
             }
 
-            Company.CTB -> testData.routeInfos.filter { info ->
+            Company.CTB -> routeInfos.filter { info ->
                 info.companyCode.contains(requestableRoute.company.value) && info.routeNameE == requestableRoute.number
             }
 
-            Company.NLB -> testData.routeInfos.filter { info ->
+            Company.NLB -> routeInfos.filter { info ->
                 info.companyCode.contains(requestableRoute.company.value) && info.routeNameE == requestableRoute.number
             }
 
@@ -103,18 +108,6 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
         ) else Double.MAX_VALUE
         return originDistance <= errorDistance && destDistance <= errorDistance
     }
-
-//    private fun isStopNameMatch(stopName1: String, stopName2: String): Boolean {
-//        val regex = "\\p{P}".toRegex()
-//        val delimiter = "[, ]+".toRegex()
-//        val names1 = stopName1.replace(regex, "").split(delimiter)
-//        val names2 = stopName2.replace(regex, "").split(delimiter)
-//        return stopName1.contains(stopName2) || stopName2.contains(stopName1) || names1.any { stopName2.contains(it) } || names2.any {
-//            stopName1.contains(
-//                it
-//            )
-//        }
-//    }
 
     private fun getClosestStopID(stop: RequestableStop, candidateStopIDs: List<String>): String? {
         var result: String? = null
@@ -174,9 +167,9 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
                 }
             }
             if (routeInfo != null) {
-                testData.routeInfos.remove(routeInfo)
+                routeInfos.remove(routeInfo)
             } else {
-                if (isJointRoute(kmbRoute)) unmappedJointRoutes.add(kmbRoute) else kmbUnmappedRoutes.add(kmbRoute)
+                if (isJointRoute(kmbRoute)) unmappedJointRoutes.add(kmbRoute) else unmappedKmbRoutes.add(kmbRoute)
             }
             routes.add(
                 Route(
@@ -204,9 +197,9 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
             val candidates = getRouteInfoCandidates(it)
             val companyCode = if (candidates.isEmpty()) it.company.value else candidates.last().companyCode
             if (routeInfo != null) {
-                testData.routeInfos.remove(routeInfo)
+                routeInfos.remove(routeInfo)
             } else {
-                ctbUnmappedRoutes.add(it)
+                unmappedCtbRoutes.add(it)
             }
             routes.add(
                 Route(
@@ -232,9 +225,9 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
         nlbRequestableRoutes.forEach {
             val routeInfo: RouteInfo? = getRouteInfo(it)
             if (routeInfo != null) {
-                testData.routeInfos.remove(routeInfo)
+                routeInfos.remove(routeInfo)
             } else {
-                nlbUnmappedRoutes.add(it)
+                unmappedNlbRoutes.add(it)
             }
             routes.add(
                 Route(
@@ -256,21 +249,24 @@ class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
                 )
             )
         }
-        println("KMB routes: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size} (" + "mapped: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size - kmbUnmappedRoutes.size}, " + "unmapped: ${kmbUnmappedRoutes.size})"
+        println("- KMB routes: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size} (" + "mapped: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size - unmappedKmbRoutes.size}, " + "unmapped: ${unmappedKmbRoutes.size})"
         )
-        println("CTB routes: ${routes.filter { it.companyCode == "CTB" }.size} (" + "mapped: ${routes.filter { it.companyCode == "CTB" }.size - ctbUnmappedRoutes.size}, unmapped: ${ctbUnmappedRoutes.size})"
+        println("- CTB routes: ${routes.filter { it.companyCode == "CTB" }.size} (mapped: ${routes.filter { it.companyCode == "CTB" }.size - unmappedCtbRoutes.size}, unmapped: ${unmappedCtbRoutes.size})"
         )
-        println("NLB routes: ${routes.filter { it.companyCode == "NLB" }.size} (" + " mapped: ${routes.filter { it.companyCode == "NLB" }.size - nlbUnmappedRoutes.size}, unmapped: ${nlbUnmappedRoutes.size})"
+        println("- NLB routes: ${routes.filter { it.companyCode == "NLB" }.size} (mapped: ${routes.filter { it.companyCode == "NLB" }.size - unmappedNlbRoutes.size}, unmapped: ${unmappedNlbRoutes.size})"
         )
         println(
-            "Joint routes: ${routes.filter { it.companyCode.contains("+") }.size} (" + "mapped: ${jointRoutes.size - unmappedJointRoutes.size}, unmapped: ${unmappedJointRoutes.size})"
+            "- Joint routes: ${routes.filter { it.companyCode.contains("+") }.size} (mapped: ${jointRoutes.size - unmappedJointRoutes.size}, unmapped: ${unmappedJointRoutes.size})"
         )
-        println("Total routes: ${routes.size}")
+        val totalUnmapped =
+            unmappedKmbRoutes.size + unmappedCtbRoutes.size + unmappedNlbRoutes.size + unmappedJointRoutes.size
+        println("- Total routes: ${routes.size} (mapped: ${routes.size - totalUnmapped}, unmapped: $totalUnmapped)")
     }
 }
 
 suspend fun main() {
     val govRecordStops = mutableListOf<GovRecordStop>()
+    val routeInfos = mutableListOf<RouteInfo>()
     val t = measureTime {
         coroutineScope {
             launch {
@@ -278,12 +274,11 @@ suspend fun main() {
                 val file = File(ROUTE_INFO_EXPORT_PATH)
                 val stream = GZIPInputStream(file.inputStream())
                 val jsonString = stream.bufferedReader().use { it.readText() }
-                val routeInfos = klaxon.parse<TestData>(jsonString)!!.routeInfos
-                testData.routeInfos.addAll(routeInfos)
+                routeInfos.addAll(klaxon.parseArray<RouteInfo>(jsonString)!!.toList())
             }
             launch {
                 val klaxon = Klaxon()
-                val dbFile = File(DB_EXPORT_PATH)
+                val dbFile = File(REQUESTABLES_EXPORT_PATH)
                 val dbStream = GZIPInputStream(dbFile.inputStream())
                 val jsonString = dbStream.bufferedReader().use { it.readText() }
                 val data = klaxon.parse<SharedData>(jsonString)
@@ -318,13 +313,11 @@ suspend fun main() {
         }
     }
     println(
-        "Mapped Routes:${testData.routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, Stops (Government record):${govRecordStops.size}, loaded in $t"
+        "Mapped Routes:${routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, Stops (Government record):${govRecordStops.size}, loaded in $t"
     )
-    val analyzer = Analyzer(govRecordStops)
-    execute("Analyzing...") {
-        println()
-        analyzer.analyze()
-    }
+
+    val analyzer = Analyzer(routeInfos, govRecordStops)
+    execute("Analyzing...", true) { analyzer.analyze() }
 
     execute("Rounding LatLng...") {
         val stops = sharedData.requestableStops.map {
@@ -337,8 +330,30 @@ suspend fun main() {
     }
 
 
-    execute("Writing final database \"$DB_FINAL_EXPORT_PATH\"...") {
-        writeToFile(FinalDatabase(analyzer.routes, sharedData.requestableStops).toJson(), DB_FINAL_EXPORT_PATH)
+    execute("Writing database \"$ROUTES_STOPS_DB_EXPORT_PATH\"...") {
+        writeToXZ(FinalDatabase(analyzer.routes, sharedData.requestableStops).toJson(), ROUTES_STOPS_DB_EXPORT_PATH)
+    }
+
+    execute("Writing paths...", true) {
+        val pathIDs = mutableSetOf<Int>()
+        analyzer.routes.forEach { if (it.pathId != null) pathIDs.add(it.pathId) }
+        MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs)
+    }
+
+    execute("Compressing files to archive...") {
+        val files = listOf(File(ROUTES_STOPS_DB_EXPORT_PATH), File(PATH_DB_EXPORT_PATH))
+        val output = FileOutputStream(ARCHIVE_EXPORT_PATH)
+        TarArchiveOutputStream(output).use { tos ->
+            for (file in files) {
+                FileInputStream(file).use { input ->
+                    val entry = TarArchiveEntry(file.name)
+                    entry.size = file.length()
+                    tos.putArchiveEntry(entry)
+                    input.copyTo(tos)
+                    tos.closeArchiveEntry()
+                }
+            }
+        }
     }
 }
 

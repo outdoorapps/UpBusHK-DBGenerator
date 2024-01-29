@@ -5,6 +5,7 @@ package json_models
 //   val ctbRouteStopResponse = CtbRouteStopResponse.fromJson(jsonString)
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
+import data.CRS
 
 private val klaxon = Klaxon()
 

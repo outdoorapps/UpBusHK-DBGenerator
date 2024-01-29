@@ -11,5 +11,5 @@ data class RequestableStop(
     val chiSName: String,
     val latLng: List<Double>
 ) {
-    public fun toJson() = Klaxon().toJsonString(this)
+    fun toJson() = Klaxon().toJsonString(this)
 }

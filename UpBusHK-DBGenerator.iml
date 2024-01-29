@@ -21,5 +21,7 @@
     <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.proj4jlocationtech" level="project" />
     <orderEntry type="library" name="programmerare.crs.transformation.adapter.impl.nga" level="project" />
     <orderEntry type="library" name="jetbrains.kotlinx.coroutines.core1" level="project" />
+    <orderEntry type="library" name="tukaani.xz" level="project" />
+    <orderEntry type="library" name="apache.commons.compress" level="project" />
   </component>
 </module>

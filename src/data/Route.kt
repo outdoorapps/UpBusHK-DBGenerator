@@ -17,10 +17,9 @@ data class Route(
     @Json(name = "service_type") val kmbServiceType: Int?,
     val nlbRouteId: String?,
     val mappedRouteId: Int?,
-    val mappedObjectId: Int?,
+    val pathId: Int?,
     val stops: List<String>,
     val secondaryStops: List<String>
-    //val polyline: List<List<Double>>
     //val fares: List<Double> decimal Int
 ) {
     fun toJson() = Klaxon().toJsonString(this)

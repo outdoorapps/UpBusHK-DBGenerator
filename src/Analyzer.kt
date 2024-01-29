@@ -12,6 +12,7 @@ import json_models.RouteInfo
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import java.io.File
+import java.math.RoundingMode
 import java.util.zip.GZIPInputStream
 import java.util.zip.ZipFile
 import kotlin.time.measureTime
@@ -324,6 +325,17 @@ suspend fun main() {
         println()
         analyzer.analyze()
     }
+
+    execute("Rounding LatLng...") {
+        val stops = sharedData.requestableStops.map {
+            val lat = it.latLng.lat.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            val long = it.latLng.long.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            it.copy(latLng = LatLng(lat, long))
+        }
+        sharedData.requestableStops.clear()
+        sharedData.requestableStops.addAll(stops)
+    }
+
 
     execute("Writing final database \"$DB_FINAL_EXPORT_PATH\"...") {
         writeToFile(FinalDatabase(analyzer.routes, sharedData.requestableStops).toJson(), DB_FINAL_EXPORT_PATH)

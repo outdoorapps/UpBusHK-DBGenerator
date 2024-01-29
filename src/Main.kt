@@ -19,12 +19,18 @@ import kotlin.time.measureTime
 fun main() {
     // 1. Get Routes todo MTRB routes
     executeWithCount("Getting KMB routes...") { getRoutes(Company.KMB) }
-    executeWithCount("Getting CTB routes...") { getRoutes(Company.CTB) }
+    executeWithCount("Getting CTB routes...") {
+        println()
+        getRoutes(Company.CTB)
+    }
     executeWithCount("Getting NLB routes...") { getRoutes(Company.NLB) }
 
     // 2. Get Stops  todo MTRB stops
     executeWithCount("Getting KMB stops...") { getKmbStops() }
-    executeWithCount("Getting CTB stops...") { getCtbStops() }
+    executeWithCount("Getting CTB stops...") {
+        println()
+        getCtbStops()
+    }
     executeWithCount("Getting NLB stops...") { getNlbStops() }
     StopController.validateStops()
 

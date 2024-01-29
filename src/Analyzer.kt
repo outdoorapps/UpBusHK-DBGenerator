@@ -6,7 +6,6 @@ import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumb
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.*
-import jdk.jshell.execution.Util
 import json_models.BusStopRaw
 import json_models.RouteInfo
 import kotlinx.coroutines.coroutineScope
@@ -30,9 +29,9 @@ suspend fun main() {
     )
 
     val routes = mutableListOf<Route>()
-    val kmbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.KMB }.toMutableList()
-    val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }.toMutableList()
-    val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }.toMutableList()
+    val kmbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.KMB }
+    val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }
+    val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }
     println("KMB:${kmbRequestableRoutes.size}, CTB:${ctbRequestableRoutes.size}, NLB:${nlbRequestableRoutes.size}")
 
     val kmbUnmappedRoutes = mutableListOf<RequestableRoute>()
@@ -53,42 +52,8 @@ suspend fun main() {
             if (ctbRoute == null) {
                 println("No CTB route matches KMB route: ${kmbRoute.number},Bound:${kmbRoute.bound},service type:${kmbRoute.kmbServiceType}")
             } else {
-                if (kmbRoute.stops.size <= ctbRoute.stops.size) {
-                    kmbRoute.stops.forEach { kmbStopId ->
-                        val kmbStop = sharedData.requestableStops.find { x -> x.stopId == kmbStopId }
-                        // Search a sublist of remaining stops
-                        val startIndex = if (secondaryStops.isEmpty()) {
-                            0
-                        } else {
-                            val index = ctbRoute.stops.indexOf(secondaryStops.values.last())
-                            if (index == ctbRoute.stops.size) index else index + 1
-                        }
-
-                        val ctbStopId = if (kmbStop != null) {
-                            getClosestStopID(kmbStop, ctbRoute.stops.subList(startIndex, ctbRoute.stops.size))
-                        } else null
-
-                        if (ctbStopId == null) {
-                            println("No match for stop:${kmbStop?.chiTName}(${kmbStopId})--${kmbRoute.number},Bound:${kmbRoute.bound},service type:${kmbRoute.kmbServiceType}")
-                        } else {
-                            val ctbStop = sharedData.requestableStops.find { x -> x.stopId == ctbStopId }
-                            val distance = Utils.distanceInMeters(kmbStop!!.latLng,ctbStop!!.latLng)
-                            if(distance > 100.0) {
-                                println("distance > 100.0: ${kmbStop.chiTName} to ${ctbStop.chiTName}")
-                            }
-                        }
-                        secondaryStops[kmbStopId] = ctbStopId ?: ""
-                    }
-                } else {
-                    println("${kmbRoute.number},${kmbRoute.kmbServiceType},${kmbRoute.bound},${kmbRoute.stops.size},${ctbRoute.stops.size}")
-                    //todo
-                    //it.stops.size < ctbRoute.stops.size
-                }
-                // Remove merged route from CTB's list todo
-                // ctbRequestableRoutes.remove(ctbRoute)
-
-                // todo need to match CTB stops and put into the final Route item, match gps coordinates
-                jointRoutes.add(kmbRoute)
+                secondaryStops.putAll(getStopMap(kmbRoute, ctbRoute))
+                jointRoutes.add(kmbRoute) //todo
             }
         }
         if (routeInfo != null) {
@@ -266,6 +231,30 @@ private fun getClosestStopID(stop: RequestableStop, candidateStopIDs: List<Strin
         }
     }
     return result
+}
+
+private fun getStopMap(refRoute: RequestableRoute, matchingRoute: RequestableRoute): Map<String, String> {
+    val stopMap = mutableMapOf<String, String>()
+    refRoute.stops.forEach { kmbStopId ->
+        val refStop = sharedData.requestableStops.find { x -> x.stopId == kmbStopId }
+        // Search a sublist of remaining stops
+        val startIndex = if (stopMap.isEmpty()) {
+            0
+        } else {
+            val index = matchingRoute.stops.indexOf(stopMap.values.last())
+            if (index == matchingRoute.stops.size) index else index + 1
+        }
+
+        val ctbStopId = if (refStop != null) {
+            getClosestStopID(refStop, matchingRoute.stops.subList(startIndex, matchingRoute.stops.size))
+        } else null
+        stopMap[kmbStopId] = ctbStopId ?: ""
+    }
+    if (stopMap.values.contains("")) {
+        stopMap.filter { (_, matchingStopId) -> matchingStopId == "" }
+            .forEach { (refStopId, _) -> println("Not match for StopID:$refStopId, (${refRoute.number},${refRoute.bound},${refRoute.kmbServiceType})") }
+    }
+    return stopMap
 }
 
 suspend fun loadData() {

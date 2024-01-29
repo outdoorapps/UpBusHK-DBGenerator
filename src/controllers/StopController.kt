@@ -6,7 +6,7 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
-import PatchData
+import Patch
 import Utils
 import data.LatLng
 import data.RequestableStop
@@ -41,7 +41,7 @@ class StopController {
                             LatLng(x.lat.toDouble(), x.long.toDouble())
                         )
                     }.toMutableList()
-                    PatchData.stopPatchMap.forEach { (missingStopId, pairingStopId) ->
+                    Patch.stopPatchMap.forEach { (missingStopId, pairingStopId) ->
                         if (!newStops.any { stop -> stop.stopId == missingStopId }) {
                             val pairingStop =
                                 newStops.find { requestableStop -> requestableStop.stopId == pairingStopId }

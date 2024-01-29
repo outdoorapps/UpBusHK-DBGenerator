@@ -10,6 +10,8 @@ import Bound
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
+import Patch.Companion.patchCTBRoutes
+import Patch.Companion.patchKmbRouteIfNeeded
 import Utils
 import data.RequestableRoute
 import json_models.*
@@ -51,19 +53,21 @@ class RouteController {
                                         countDownLatch.countDown()
                                     },
                                     onResponse = { stops ->
-                                        val newRoute = RequestableRoute(
-                                            Company.KMB,
-                                            it.route,
-                                            it.bound,
-                                            null,
-                                            it.origEn,
-                                            it.origTc,
-                                            it.origSc,
-                                            it.destEn,
-                                            it.destTc,
-                                            it.destSc,
-                                            it.serviceType.toInt(),
-                                            stops
+                                        val newRoute = patchKmbRouteIfNeeded(
+                                            RequestableRoute(
+                                                Company.KMB,
+                                                it.route,
+                                                it.bound,
+                                                null,
+                                                it.origEn,
+                                                it.origTc,
+                                                it.origSc,
+                                                it.destEn,
+                                                it.destTc,
+                                                it.destSc,
+                                                it.serviceType.toInt(),
+                                                stops
+                                            )
                                         )
                                         CoroutineScope(Dispatchers.IO).launch {
                                             mutex.withLock {
@@ -135,11 +139,13 @@ class RouteController {
                                 }
                             }
                             countDownLatch.await()
-                            ctbRequestableRoutes.sortWith(
+                            val patchedCTBRoutes = patchCTBRoutes(ctbRequestableRoutes)
+
+                            patchedCTBRoutes.sortWith(
                                 compareBy({ it.number.toInt(Character.MAX_RADIX) }, { it.bound })
                             )
-                            sharedData.requestableRoutes.addAll(ctbRequestableRoutes)
-                            routesAdded = ctbRequestableRoutes.size
+                            sharedData.requestableRoutes.addAll(patchedCTBRoutes)
+                            routesAdded = patchedCTBRoutes.size
                         }
                     }
 

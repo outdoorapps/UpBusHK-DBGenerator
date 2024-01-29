@@ -19,7 +19,6 @@ val testData = TestData()
 val stops = mutableListOf<Stop>()
 const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
 const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
-const val STOP_MATCHING_ERROR_DISTANCE_METERS = 180.0
 suspend fun main() {
     val t = measureTime {
         loadData()
@@ -144,6 +143,8 @@ suspend fun main() {
         )
     }
     println("NLB routes mapped: ${nlbRequestableRoutes.size - nlbUnmappedRoutes.size}, unmapped: ${nlbUnmappedRoutes.size}")
+
+    println("Total routes: ${routes.size}")
 }
 
 private fun getRouteInfoCandidates(requestableRoute: RequestableRoute): List<RouteInfo> =

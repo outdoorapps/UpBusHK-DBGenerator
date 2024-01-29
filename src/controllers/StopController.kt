@@ -6,7 +6,6 @@ import APIs.Companion.KMB_ALL_STOPS
 import Company
 import HttpHelper.Companion.get
 import HttpHelper.Companion.getAsync
-import Patch
 import Utils
 import data.LatLng
 import data.RequestableStop
@@ -40,22 +39,6 @@ class StopController {
                             x.nameSc,
                             LatLng(x.lat.toDouble(), x.long.toDouble())
                         )
-                    }.toMutableList()
-                    Patch.stopPatchMap.forEach { (missingStopId, pairingStopId) ->
-                        if (!newStops.any { stop -> stop.stopId == missingStopId }) {
-                            val pairingStop =
-                                newStops.find { requestableStop -> requestableStop.stopId == pairingStopId }
-                            if (pairingStop != null) newStops.add(
-                                RequestableStop(
-                                    Company.KMB,
-                                    missingStopId,
-                                    pairingStop.engName,
-                                    pairingStop.chiTName,
-                                    pairingStop.chiSName,
-                                    pairingStop.latLng
-                                )
-                            )
-                        }
                     }
                     sharedData.requestableStops.addAll(newStops.sortedBy { it.stopId })
                     stopsAdded = newStops.size

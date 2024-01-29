@@ -1,4 +1,8 @@
+import Patch.Companion.patchRoutes
+import Patch.Companion.patchStops
 import Paths.Companion.DB_EXPORT_PATH
+import Paths.Companion.DB_RAW_EXPORT_PATH
+import Paths.Companion.DB_ROUTE_ONLY_EXPORT_PATH
 import controllers.RouteController.Companion.getRoutes
 import controllers.StopController
 import controllers.StopController.Companion.getCtbStops
@@ -26,15 +30,24 @@ fun main() {
 
     // 3. Get map and fare
 
-    // 4. Write to Json.gz
-    execute("Writing to \"$DB_EXPORT_PATH\"...") {
-        val output = FileOutputStream(DB_EXPORT_PATH)
-        output.use {
-            val writer = OutputStreamWriter(GZIPOutputStream(it), UTF_8)
-            writer.use { w ->
-                w.write(sharedData.toJson())
-            }
-        }
+    execute("Writing raw database (for debugging) \"$DB_RAW_EXPORT_PATH\"...") {
+        writeToFile(sharedData.toJson(), DB_RAW_EXPORT_PATH)
+    }
+
+    // 4. Patch database
+    execute("Patching database...") {
+        patchRoutes(sharedData.requestableRoutes)
+        patchStops(sharedData.requestableStops)
+    }
+
+    // 5. Write database
+    execute("Writing patched database \"$DB_EXPORT_PATH\"...") {
+        writeToFile(sharedData.toJson(), DB_EXPORT_PATH)
+    }
+
+    execute("Writing to route only database (for debugging) \"${DB_ROUTE_ONLY_EXPORT_PATH}\"...") {
+        val sharedDataRouteOnly = sharedData.copy(requestableStops = mutableListOf())
+        writeToFile(sharedDataRouteOnly.toJson(), DB_ROUTE_ONLY_EXPORT_PATH)
     }
 }
 
@@ -51,4 +64,14 @@ fun execute(description: String, action: () -> Unit) {
     print(description)
     val t = measureTime { action() }
     println("finished in $t")
+}
+
+fun writeToFile(data: String, path: String) {
+    val output = FileOutputStream(path)
+    output.use {
+        val writer = OutputStreamWriter(GZIPOutputStream(it), UTF_8)
+        writer.use { w ->
+            w.write(data)
+        }
+    }
 }

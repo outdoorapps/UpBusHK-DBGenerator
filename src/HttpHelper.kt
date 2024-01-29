@@ -36,5 +36,15 @@ class HttpHelper {
             }
             return ""
         }
+
+        fun download(url: String): String {
+            val request = Request.Builder().url(url).build()
+            okHttpClient.newCall(request).execute().use {
+                if (it.isSuccessful && it.body != null) {
+                    return it.body?.string() ?: ""
+                }
+            }
+            return ""
+        }
     }
 }

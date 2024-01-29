@@ -1,6 +1,7 @@
 class Paths {
     companion object {
-        const val MAPPED_ROUTES_SOURCE_PATH = "resources/BusRoute_GEOJSON.zip"
+        const val GEOJSON_URL = "https://static.csdi.gov.hk/csdi-webpage/download/7faa97a82780505c9673c4ba128fbfed/geojson"
+        const val GEOJSON_PATH = "resources/BusRoute_GEOJSON.zip"
         const val BUS_STOPS_SOURCE_PATH = "resources/CoordinateofBusStopLocation_GEOJSON.zip"
 
         const val REQUESTABLES_EXPORT_PATH = "resources/requestables.json.gz"

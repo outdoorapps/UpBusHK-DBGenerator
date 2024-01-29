@@ -5,6 +5,7 @@ import Paths.Companion.REQUESTABLES_EXPORT_PATH
 import Paths.Companion.ROUTES_STOPS_DB_EXPORT_PATH
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import Utils.Companion.execute
+import Utils.Companion.loadGovRecordStop
 import Utils.Companion.writeToXZ
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
@@ -30,9 +31,9 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
         const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
     }
 
-    private val kmbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.KMB }
-    private val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }
-    private val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }
+    private val kmbRequestableRoutes = requestables.requestableRoutes.filter { it.company == Company.KMB }
+    private val ctbRequestableRoutes = requestables.requestableRoutes.filter { it.company == Company.CTB }
+    private val nlbRequestableRoutes = requestables.requestableRoutes.filter { it.company == Company.NLB }
     private val jointRouteNumbers = mutableSetOf<String>()
     val routes = mutableListOf<Route>()
 
@@ -80,10 +81,10 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
     private fun isRouteBoundMatch(
         requestableRoute1: RequestableRoute, requestableRoute2: RequestableRoute, errorDistance: Double
     ): Boolean {
-        val origin1 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute1.stops.first() }
-        val dest1 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute1.stops.last() }
-        val origin2 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute2.stops.first() }
-        val dest2 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute2.stops.last() }
+        val origin1 = requestables.requestableStops.find { stop -> stop.stopId == requestableRoute1.stops.first() }
+        val dest1 = requestables.requestableStops.find { stop -> stop.stopId == requestableRoute1.stops.last() }
+        val origin2 = requestables.requestableStops.find { stop -> stop.stopId == requestableRoute2.stops.first() }
+        val dest2 = requestables.requestableStops.find { stop -> stop.stopId == requestableRoute2.stops.last() }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
             origin1.latLng, origin2.latLng
         ) else Double.MAX_VALUE
@@ -96,8 +97,8 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
     private fun isRouteInfoBoundMatch(
         requestableRoute: RequestableRoute, routeInfo: RouteInfo, errorDistance: Double
     ): Boolean {
-        val origin1 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.first() }
-        val dest1 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.last() }
+        val origin1 = requestables.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.first() }
+        val dest1 = requestables.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.last() }
         val origin2 = govRecordStops.find { stop -> stop.stopId == routeInfo.stStopId }
         val dest2 = govRecordStops.find { stop -> stop.stopId == routeInfo.edStopId }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
@@ -113,7 +114,7 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
         var result: String? = null
         var minDistance = Double.MAX_VALUE
         candidateStopIDs.forEach {
-            val candidateStop = sharedData.requestableStops.find { x -> x.stopId == it }
+            val candidateStop = requestables.requestableStops.find { x -> x.stopId == it }
             if (candidateStop != null) {
                 val distance = Utils.distanceInMeters(candidateStop.latLng, stop.latLng)
                 if (distance < minDistance) {
@@ -128,7 +129,7 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
     private fun getStopMap(refRoute: RequestableRoute, matchingRoute: RequestableRoute): Map<String, String> {
         val stopMap = mutableMapOf<String, String>()
         refRoute.stops.forEach { kmbStopId ->
-            val refStop = sharedData.requestableStops.find { x -> x.stopId == kmbStopId }
+            val refStop = requestables.requestableStops.find { x -> x.stopId == kmbStopId }
             // Search a sublist of remaining stops
             val startIndex = if (stopMap.isEmpty()) {
                 0
@@ -264,7 +265,7 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
     }
 }
 
-suspend fun main() {
+suspend fun runAnalyzer() {
     val govRecordStops = mutableListOf<GovRecordStop>()
     val routeInfos = mutableListOf<RouteInfo>()
     val t = measureTime {
@@ -281,57 +282,34 @@ suspend fun main() {
                 val dbFile = File(REQUESTABLES_EXPORT_PATH)
                 val dbStream = GZIPInputStream(dbFile.inputStream())
                 val jsonString = dbStream.bufferedReader().use { it.readText() }
-                val data = klaxon.parse<SharedData>(jsonString)
-                sharedData.requestableRoutes.addAll(data!!.requestableRoutes)
-                sharedData.requestableStops.addAll(data.requestableStops)
+                val data = klaxon.parse<Requestables>(jsonString)
+                requestables.requestableRoutes.addAll(data!!.requestableRoutes)
+                requestables.requestableStops.addAll(data.requestableStops)
             }
             launch {
-                val crsTransformationAdapter =
-                    CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
-                val klaxon = Klaxon()
-                val file = ZipFile(BUS_STOPS_SOURCE_PATH)
-                val stream = file.getInputStream(file.entries().nextElement())
-                val jsonString = stream.bufferedReader().use { it.readText() }
-                val busStopFeature = klaxon.parse<BusStopRaw>(jsonString)!!.features
-                busStopFeature.forEach {
-                    val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
-                        eastingNorthing(
-                            it.geometry.coordinates[0].toDouble(),
-                            it.geometry.coordinates[1].toDouble(),
-                            EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
-                        ), EpsgNumber.WORLD__WGS_84__4326
-                    )
-                    govRecordStops.add(
-                        GovRecordStop(
-                            it.properties.stopId,
-                            mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
-                        )
-                    )
-                }
-                govRecordStops.sortBy { x -> x.stopId }
+                govRecordStops.addAll(loadGovRecordStop())
             }
         }
     }
     println(
-        "Mapped Routes:${routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, Stops (Government record):${govRecordStops.size}, loaded in $t"
+        "Mapped Routes:${routeInfos.size}, Requestable routes:${requestables.requestableRoutes.size}, Stops (Government record):${govRecordStops.size}, loaded in $t"
     )
 
     val analyzer = Analyzer(routeInfos, govRecordStops)
     execute("Analyzing...", true) { analyzer.analyze() }
 
     execute("Rounding LatLng...") {
-        val stops = sharedData.requestableStops.map {
+        val stops = requestables.requestableStops.map {
             val lat = it.latLng[0].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
             val long = it.latLng[1].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
             it.copy(latLng = mutableListOf(lat, long))
         }
-        sharedData.requestableStops.clear()
-        sharedData.requestableStops.addAll(stops)
+        requestables.requestableStops.clear()
+        requestables.requestableStops.addAll(stops)
     }
 
-
     execute("Writing database \"$ROUTES_STOPS_DB_EXPORT_PATH\"...") {
-        writeToXZ(FinalDatabase(analyzer.routes, sharedData.requestableStops).toJson(), ROUTES_STOPS_DB_EXPORT_PATH)
+        writeToXZ(RoutesStopsDatabase(analyzer.routes, requestables.requestableStops).toJson(), ROUTES_STOPS_DB_EXPORT_PATH)
     }
 
     execute("Writing paths...", true) {
@@ -356,7 +334,6 @@ suspend fun main() {
         }
     }
 }
-
-data class FinalDatabase(val routes: List<Route>, val requestableStops: List<RequestableStop>) {
-    fun toJson() = Klaxon().toJsonString(this)
+suspend fun main() {
+    runAnalyzer()
 }

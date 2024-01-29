@@ -1,6 +1,7 @@
-import Paths.Companion.MAPPED_ROUTES_SOURCE_PATH
+import Paths.Companion.GEOJSON_PATH
 import Paths.Companion.PATH_DB_EXPORT_PATH
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
+import Utils.Companion.execute
 import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
@@ -57,7 +58,7 @@ class MappedRouteParser {
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
         private fun readFile(xzOutStream: XZOutputStream?, pathIDsToWrite: Set<Int>?): List<RouteInfo> {
             val routeInfos = mutableListOf<RouteInfo>()
-            val file = ZipFile(MAPPED_ROUTES_SOURCE_PATH)
+            val file = ZipFile(GEOJSON_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             var pathsWritten = 0
 
@@ -206,13 +207,7 @@ class MappedRouteParser {
 }
 
 fun main() {
-    val t = measureTime {
+    execute("Parsing routeInfo...", true) {
         MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = false, pathIDsToWrite = null)
     }
-    println("Finished in $t")
-
-//    val t = measureTime {
-//        MappedRouteParser.parseFile()
-//    }
-//    println("Finished in $t")
 }

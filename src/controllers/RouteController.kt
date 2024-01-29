@@ -19,7 +19,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Call
-import sharedData
+import requestables
 import java.util.concurrent.CountDownLatch
 
 class RouteController {
@@ -79,7 +79,7 @@ class RouteController {
                                     { it.bound },
                                     { it.kmbServiceType })
                             )
-                            sharedData.requestableRoutes.addAll(kmbRequestableRoutes)
+                            requestables.requestableRoutes.addAll(kmbRequestableRoutes)
                             routesAdded = kmbRequestableRoutes.size
                         }
                     }
@@ -138,7 +138,7 @@ class RouteController {
                             ctbRequestableRoutes.sortWith(
                                 compareBy({ it.number.toInt(Character.MAX_RADIX) }, { it.bound })
                             )
-                            sharedData.requestableRoutes.addAll(ctbRequestableRoutes)
+                            requestables.requestableRoutes.addAll(ctbRequestableRoutes)
                             routesAdded = ctbRequestableRoutes.size
                         }
                     }
@@ -162,7 +162,7 @@ class RouteController {
                                     }
                                 }
                                 val stops = getRouteStops(Company.NLB, it.routeId, null, null)
-                                sharedData.requestableRoutes.add(
+                                requestables.requestableRoutes.add(
                                     RequestableRoute(
                                         Company.NLB,
                                         it.routeNo,

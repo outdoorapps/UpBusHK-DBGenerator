@@ -1,8 +1,20 @@
+import Paths.Companion.BUS_STOPS_SOURCE_PATH
+import Paths.Companion.REQUESTABLES_EXPORT_PATH
+import com.beust.klaxon.Klaxon
+import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
+import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
+import com.programmerare.crsTransformations.coordinate.eastingNorthing
+import data.GovRecordStop
+import data.Requestables
+import json_models.BusStopRaw
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
+import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
+import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
+import java.util.zip.ZipFile
 import kotlin.math.cos
 import kotlin.math.sqrt
 import kotlin.time.DurationUnit
@@ -67,6 +79,34 @@ class Utils {
                     w.write(data.toByteArray())
                 }
             }
+        }
+
+        fun loadGovRecordStop(): List<GovRecordStop> {
+            val govRecordStops = mutableListOf<GovRecordStop>()
+            val crsTransformationAdapter =
+                CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
+            val klaxon = Klaxon()
+            val file = ZipFile(BUS_STOPS_SOURCE_PATH)
+            val stream = file.getInputStream(file.entries().nextElement())
+            val jsonString = stream.bufferedReader().use { it.readText() }
+            val busStopFeature = klaxon.parse<BusStopRaw>(jsonString)!!.features
+            busStopFeature.forEach {
+                val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
+                    eastingNorthing(
+                        it.geometry.coordinates[0].toDouble(),
+                        it.geometry.coordinates[1].toDouble(),
+                        EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
+                    ), EpsgNumber.WORLD__WGS_84__4326
+                )
+                govRecordStops.add(
+                    GovRecordStop(
+                        it.properties.stopId,
+                        mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
+                    )
+                )
+            }
+            govRecordStops.sortBy { x -> x.stopId }
+            return govRecordStops
         }
     }
 }

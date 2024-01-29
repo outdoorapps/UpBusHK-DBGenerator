@@ -16,7 +16,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import sharedData
+import requestables
 import java.util.concurrent.CountDownLatch
 
 class StopController {
@@ -39,7 +39,7 @@ class StopController {
                             mutableListOf(x.lat.toDouble(), x.long.toDouble())
                         )
                     }
-                    sharedData.requestableStops.addAll(newStops.sortedBy { it.stopId })
+                    requestables.requestableStops.addAll(newStops.sortedBy { it.stopId })
                     stopsAdded = newStops.size
                 }
             } catch (e: Exception) {
@@ -49,7 +49,7 @@ class StopController {
         }
 
         fun getCtbStops(): Int {
-            val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }
+            val ctbRequestableRoutes = requestables.requestableRoutes.filter { it.company == Company.CTB }
             val ctbStopIDs = mutableListOf<String>()
             val ctbStops = mutableListOf<RequestableStop>()
 
@@ -99,12 +99,12 @@ class StopController {
             }
             countDownLatch.await()
             ctbStops.sortBy { it.stopId }
-            sharedData.requestableStops.addAll(ctbStops)
+            requestables.requestableStops.addAll(ctbStops)
             return ctbStops.size
         }
 
         fun getNlbStops(): Int {
-            val nlbRoutes = sharedData.requestableRoutes.filter { x -> x.company == Company.NLB }
+            val nlbRoutes = requestables.requestableRoutes.filter { x -> x.company == Company.NLB }
             val nlbStops = mutableListOf<RequestableStop>()
 
             val countDownLatch = CountDownLatch(nlbRoutes.size)
@@ -143,16 +143,16 @@ class StopController {
             }
             countDownLatch.await()
             nlbStops.sortBy { it.stopId }
-            sharedData.requestableStops.addAll(nlbStops)
+            requestables.requestableStops.addAll(nlbStops)
             return nlbStops.size
         }
 
         fun validateStops(): List<String> {
             print("Validating stops...")
             val noMatchStops = mutableListOf<String>()
-            sharedData.requestableRoutes.forEach {
+            requestables.requestableRoutes.forEach {
                 it.stops.forEach { stop ->
-                    if (!sharedData.requestableStops.any { requestableStop -> requestableStop.stopId == stop }) {
+                    if (!requestables.requestableStops.any { requestableStop -> requestableStop.stopId == stop }) {
                         if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
                     }
                 }

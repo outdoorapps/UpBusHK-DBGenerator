@@ -10,6 +10,10 @@ data class TestData(val routeInfos: MutableList<RouteInfo> = mutableListOf()) {
     fun toJson() = Klaxon().toJsonString(this)
 }
 
-data class MappedRoute(val routeInfo: RouteInfo, val path: List<CrsCoordinate>) {
+data class MappedRoute(val routeInfo: RouteInfo, val multiLineString: List<CrsCoordinate>) {
+    fun toJson() = klaxon.toJsonString(this)
+}
+
+data class Path(val objectID: Int, val polyLine: List<List<Double>> ) {
     fun toJson() = klaxon.toJsonString(this)
 }

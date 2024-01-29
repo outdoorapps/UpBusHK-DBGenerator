@@ -1,5 +1,6 @@
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import Paths.Companion.MAPPED_ROUTES_SOURCE_PATH
+import Paths.Companion.PATH_OBJECT_EXPORT_PATH
 import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
@@ -7,12 +8,14 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.MappedRoute
+import data.Path
 import json_models.CRS
 import json_models.CRSProperties
 import json_models.RouteInfo
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.Writer
+import java.math.RoundingMode
 import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
@@ -20,66 +23,85 @@ import kotlin.time.Duration
 import kotlin.time.measureTime
 
 class GPSRouteParser {
+
     companion object {
         private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
         private val klaxon = Klaxon()
 
+        @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
         fun readFile() {
             val file = ZipFile(MAPPED_ROUTES_SOURCE_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
-            val mappedRoutes = mutableListOf<MappedRoute>()
-            JsonReader(stream.bufferedReader()).use {
-                it.beginObject {
-                    var type: String? = null
-                    var name: String? = null
-                    var crs: CRS? = null
-                    var t = Duration.ZERO
-                    while (it.hasNext()) {
-                        val readName = it.nextName()
-                        when (readName) {
-                            "type" -> type = it.nextString()
-                            "name" -> name = it.nextString()
-                            "crs" -> crs = it.beginObject {
-                                var crsType: String? = null
-                                var properties: CRSProperties? = null
-                                while (it.hasNext()) {
-                                    when (it.nextName()) {
-                                        "type" -> crsType = it.nextString()
-                                        "properties" -> properties =
-                                            klaxon.parse<CRSProperties>(it.nextObject().toJsonString())
-                                    }
-                                }
-                                CRS(crsType!!, properties!!)
-                            }
+            val routeInfos = mutableListOf<RouteInfo>()
+            val output = FileOutputStream(PATH_OBJECT_EXPORT_PATH)
+            output.use { outputStream ->
+                val writer = OutputStreamWriter(GZIPOutputStream(outputStream), Charsets.UTF_8)
+                writer.use { w ->
+                    w.write("{\"paths\" : [")
 
-                            "features" -> it.beginArray {
-                                while (it.hasNext()) {
-                                    var route: MappedRoute
-                                    val time = measureTime {
-                                        route = getMappedRoute(it)
-                                        mappedRoutes.add(route)
+                    JsonReader(stream.bufferedReader()).use {
+                        it.beginObject {
+                            var type: String? = null
+                            var name: String? = null
+                            var crs: CRS? = null
+                            var t = Duration.ZERO
+                            while (it.hasNext()) {
+                                val readName = it.nextName()
+                                when (readName) {
+                                    "type" -> type = it.nextString()
+                                    "name" -> name = it.nextString()
+                                    "crs" -> crs = it.beginObject {
+                                        var crsType: String? = null
+                                        var properties: CRSProperties? = null
+                                        while (it.hasNext()) {
+                                            when (it.nextName()) {
+                                                "type" -> crsType = it.nextString()
+                                                "properties" -> properties =
+                                                    klaxon.parse<CRSProperties>(it.nextObject().toJsonString())
+                                            }
+                                        }
+                                        CRS(crsType!!, properties!!)
                                     }
-                                    t = t.plus(time)
-//                                    println(
-//                                        "${mappedRoutes.size} Route added:${route.routeInfo.routeId}," +
-//                                                "${route.routeInfo.companyCode}-${route.routeInfo.routeNameE}," +
-//                                                "size:${route.path.size} in $time (total:$t, total transformations:$total)"
-//                                    )
-                                    if (mappedRoutes.size % 100 == 0) {
-                                        println("${mappedRoutes.size} routes added in $t")
+
+                                    "features" -> it.beginArray {
+                                        while (it.hasNext()) {
+                                            val time = measureTime {
+                                                val route = getMappedRoute(it)
+                                                routeInfos.add(route.routeInfo)
+
+                                                val polyLine = route.multiLineString.map { crsCoordinate ->
+                                                    val lat = crsCoordinate.getLatitude().toBigDecimal()
+                                                        .setScale(5, RoundingMode.HALF_EVEN).toDouble()
+                                                    val long = crsCoordinate.getLongitude().toBigDecimal()
+                                                        .setScale(5, RoundingMode.HALF_EVEN).toDouble()
+                                                    listOf(lat, long)
+                                                }
+                                                w.write(Path(route.routeInfo.objectId, polyLine).toJson())
+                                                if (it.hasNext()) w.write(",")
+                                            }
+                                            t = t.plus(time)
+                                            if (routeInfos.size % 100 == 0) {
+                                                println("${routeInfos.size} routes added in $t")
+                                            }
+                                        }
                                     }
                                 }
                             }
                         }
                     }
+
+                    w.write("]}")
                 }
             }
-            testData.routeInfos.addAll(mappedRoutes.map { it.routeInfo })
+
+
+            testData.routeInfos.addAll(routeInfos)
         }
 
+        @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
         private fun getMappedRoute(reader: JsonReader): MappedRoute {
             var routeInfo: RouteInfo? = null
-            var path: List<CrsCoordinate> = listOf()
+            var multiLineString: List<CrsCoordinate> = listOf()
             reader.beginObject {
                 var featuresType: String? = null
 
@@ -93,14 +115,15 @@ class GPSRouteParser {
                             while (reader.hasNext()) {
                                 when (reader.nextName()) {
                                     "type" -> geometryType = reader.nextString()
-                                    "coordinates" -> path = getPath(reader, geometryType!! == "MultiLineString")
+                                    "coordinates" -> multiLineString =
+                                        getPath(reader, geometryType!! == "MultiLineString")
                                 }
                             }
                         }
                     }
                 }
             }
-            return MappedRoute(routeInfo!!, path)
+            return MappedRoute(routeInfo!!, multiLineString)
         }
 
         private fun getPath(reader: JsonReader, isMultiLineString: Boolean): List<CrsCoordinate> {

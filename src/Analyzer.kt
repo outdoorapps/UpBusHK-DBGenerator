@@ -1,5 +1,6 @@
 import Paths.Companion.BUS_STOPS_SOURCE_PATH
 import Paths.Companion.DB_EXPORT_PATH
+import Paths.Companion.DB_FINAL_EXPORT_PATH
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
@@ -16,17 +17,20 @@ import java.util.zip.ZipFile
 import kotlin.time.measureTime
 
 val testData = TestData()
-val stops = mutableListOf<Stop>()
-const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
-const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
 
-class Analyzer {
+class Analyzer(private val govRecordStops: MutableList<GovRecordStop>) {
+    companion object {
+        const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
+        const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
+    }
+
     private val kmbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.KMB }
     private val ctbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.CTB }
     private val nlbRequestableRoutes = sharedData.requestableRoutes.filter { it.company == Company.NLB }
     private val jointRouteNumbers = mutableListOf<String>()
-
     val routes = mutableListOf<Route>()
+
+    // For stats
     private val kmbUnmappedRoutes = mutableListOf<RequestableRoute>()
     private val ctbUnmappedRoutes = mutableListOf<RequestableRoute>()
     private val nlbUnmappedRoutes = mutableListOf<RequestableRoute>()
@@ -39,7 +43,7 @@ class Analyzer {
                 jointRouteNumbers.add(it.routeNameE)
             }
         }
-        println("KMB:${kmbRequestableRoutes.size}, CTB:${ctbRequestableRoutes.size}, NLB:${nlbRequestableRoutes.size}, Joint:${jointRouteNumbers.size}")
+        println("KMB:${kmbRequestableRoutes.size}, CTB:${ctbRequestableRoutes.size}, NLB:${nlbRequestableRoutes.size}, Joint (unique route number):${jointRouteNumbers.size}")
     }
 
     private fun isJointRoute(requestableRoute: RequestableRoute): Boolean =
@@ -88,8 +92,8 @@ class Analyzer {
     ): Boolean {
         val origin1 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.first() }
         val dest1 = sharedData.requestableStops.find { stop -> stop.stopId == requestableRoute.stops.last() }
-        val origin2 = stops.find { stop -> stop.stopId == routeInfo.stStopId }
-        val dest2 = stops.find { stop -> stop.stopId == routeInfo.edStopId }
+        val origin2 = govRecordStops.find { stop -> stop.stopId == routeInfo.stStopId }
+        val dest2 = govRecordStops.find { stop -> stop.stopId == routeInfo.edStopId }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
             origin1.latLng, origin2.latLng
         ) else Double.MAX_VALUE
@@ -99,17 +103,17 @@ class Analyzer {
         return originDistance <= errorDistance && destDistance <= errorDistance
     }
 
-    private fun isStopNameMatch(stopName1: String, stopName2: String): Boolean {
-        val regex = "\\p{P}".toRegex()
-        val delimiter = "[, ]+".toRegex()
-        val names1 = stopName1.replace(regex, "").split(delimiter)
-        val names2 = stopName2.replace(regex, "").split(delimiter)
-        return stopName1.contains(stopName2) || stopName2.contains(stopName1) || names1.any { stopName2.contains(it) } || names2.any {
-            stopName1.contains(
-                it
-            )
-        }
-    }
+//    private fun isStopNameMatch(stopName1: String, stopName2: String): Boolean {
+//        val regex = "\\p{P}".toRegex()
+//        val delimiter = "[, ]+".toRegex()
+//        val names1 = stopName1.replace(regex, "").split(delimiter)
+//        val names2 = stopName2.replace(regex, "").split(delimiter)
+//        return stopName1.contains(stopName2) || stopName2.contains(stopName1) || names1.any { stopName2.contains(it) } || names2.any {
+//            stopName1.contains(
+//                it
+//            )
+//        }
+//    }
 
     private fun getClosestStopID(stop: RequestableStop, candidateStopIDs: List<String>): String? {
         var result: String? = null
@@ -156,7 +160,7 @@ class Analyzer {
         kmbRequestableRoutes.forEach { kmbRoute ->
             // Merge KMB and CTB routes
             val routeInfo: RouteInfo? = getRouteInfo(kmbRoute)
-            val secondaryStops = mutableMapOf<String, String>()
+            val secondaryStops = mutableListOf<String>()
             if (isJointRoute(kmbRoute)) {
                 val ctbRoute = ctbRequestableRoutes.find { x ->
                     x.number == kmbRoute.number && isRouteBoundMatch(x, kmbRoute, JOINT_ROUTE_ERROR_DISTANCE_METERS)
@@ -164,8 +168,8 @@ class Analyzer {
                 if (ctbRoute == null) {
                     println("No CTB route matches KMB route: ${kmbRoute.number},Bound:${kmbRoute.bound},service type:${kmbRoute.kmbServiceType}")
                 } else {
-                    secondaryStops.putAll(getStopMap(kmbRoute, ctbRoute))
-                    jointRoutes.add(kmbRoute) //todo
+                    secondaryStops.addAll(getStopMap(kmbRoute, ctbRoute).values)
+                    jointRoutes.add(kmbRoute)
                 }
             }
             if (routeInfo != null) {
@@ -193,8 +197,6 @@ class Analyzer {
                 )
             )
         }
-        println("KMB routes mapped: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size - kmbUnmappedRoutes.size}, unmapped: ${kmbUnmappedRoutes.size}")
-        println("Joint routes: ${jointRoutes.size} mapped: ${jointRoutes.size - unmappedJointRoutes.size}, unmapped: ${unmappedJointRoutes.size}")
 
         ctbRequestableRoutes.filter { !isJointRoute(it) }.forEach {
             val routeInfo: RouteInfo? = getRouteInfo(it)
@@ -221,12 +223,10 @@ class Analyzer {
                     routeInfo?.routeId,
                     routeInfo?.objectId,
                     it.stops,
-                    emptyMap()
+                    emptyList()
                 )
             )
         }
-        println("CTB routes: ${ctbRequestableRoutes.filter { !isJointRoute(it) }.size}")
-        println("CTB routes mapped: ${routes.filter { it.companyCode == "CTB" }.size - ctbUnmappedRoutes.size}, unmapped: ${ctbUnmappedRoutes.size}")
 
         nlbRequestableRoutes.forEach {
             val routeInfo: RouteInfo? = getRouteInfo(it)
@@ -251,70 +251,85 @@ class Analyzer {
                     routeInfo?.routeId,
                     routeInfo?.objectId,
                     it.stops,
-                    emptyMap()
+                    emptyList()
                 )
             )
         }
-        println("NLB routes mapped: ${routes.filter { it.companyCode == "NLB" }.size - nlbUnmappedRoutes.size}, unmapped: ${nlbUnmappedRoutes.size}")
-
+        println("KMB routes: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size} (" + "mapped: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size - kmbUnmappedRoutes.size}, " + "unmapped: ${kmbUnmappedRoutes.size})"
+        )
+        println("CTB routes: ${routes.filter { it.companyCode == "CTB" }.size} (" + "mapped: ${routes.filter { it.companyCode == "CTB" }.size - ctbUnmappedRoutes.size}, unmapped: ${ctbUnmappedRoutes.size})"
+        )
+        println("NLB routes: ${routes.filter { it.companyCode == "NLB" }.size} (" + " mapped: ${routes.filter { it.companyCode == "NLB" }.size - nlbUnmappedRoutes.size}, unmapped: ${nlbUnmappedRoutes.size})"
+        )
+        println(
+            "Joint routes: ${routes.filter { it.companyCode.contains("+") }.size} (" + "mapped: ${jointRoutes.size - unmappedJointRoutes.size}, unmapped: ${unmappedJointRoutes.size})"
+        )
         println("Total routes: ${routes.size}")
-        println("KMB routes: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size}")
-        println("CTB routes: ${routes.filter { it.companyCode == "CTB" }.size}")
-        println("NLB routes: ${routes.filter { it.companyCode == "NLB" }.size}")
-        println("Joint routes: ${routes.filter { it.companyCode.contains("+") }.size}")
     }
 }
 
 suspend fun main() {
+    val govRecordStops = mutableListOf<GovRecordStop>()
     val t = measureTime {
-        loadData()
+        coroutineScope {
+            launch {
+                val klaxon = Klaxon()
+                val file = File(ROUTE_INFO_EXPORT_PATH)
+                val stream = GZIPInputStream(file.inputStream())
+                val jsonString = stream.bufferedReader().use { it.readText() }
+                val routeInfos = klaxon.parse<TestData>(jsonString)!!.routeInfos
+                testData.routeInfos.addAll(routeInfos)
+            }
+            launch {
+                val klaxon = Klaxon()
+                val dbFile = File(DB_EXPORT_PATH)
+                val dbStream = GZIPInputStream(dbFile.inputStream())
+                val jsonString = dbStream.bufferedReader().use { it.readText() }
+                val data = klaxon.parse<SharedData>(jsonString)
+                sharedData.requestableRoutes.addAll(data!!.requestableRoutes)
+                sharedData.requestableStops.addAll(data.requestableStops)
+            }
+            launch {
+                val crsTransformationAdapter =
+                    CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
+                val klaxon = Klaxon()
+                val file = ZipFile(BUS_STOPS_SOURCE_PATH)
+                val stream = file.getInputStream(file.entries().nextElement())
+                val jsonString = stream.bufferedReader().use { it.readText() }
+                val busStopFeature = klaxon.parse<BusStopRaw>(jsonString)!!.features
+                busStopFeature.forEach {
+                    val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
+                        eastingNorthing(
+                            it.geometry.coordinates[0].toDouble(),
+                            it.geometry.coordinates[1].toDouble(),
+                            EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
+                        ), EpsgNumber.WORLD__WGS_84__4326
+                    )
+                    govRecordStops.add(
+                        GovRecordStop(
+                            it.properties.stopId,
+                            LatLng(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
+                        )
+                    )
+                }
+                govRecordStops.sortBy { x -> x.stopId }
+            }
+        }
     }
     println(
-        "Mapped Routes:${testData.routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, " + "Requestable stops:${stops.size}, loaded in $t"
+        "Mapped Routes:${testData.routeInfos.size}, Requestable routes:${sharedData.requestableRoutes.size}, Stops (Government record):${govRecordStops.size}, loaded in $t"
     )
-    Analyzer().analyze()
+    val analyzer = Analyzer(govRecordStops)
+    execute("Analyzing...") {
+        println()
+        analyzer.analyze()
+    }
+
+    execute("Writing final database \"$DB_FINAL_EXPORT_PATH\"...") {
+        writeToFile(FinalDatabase(analyzer.routes, sharedData.requestableStops).toJson(), DB_FINAL_EXPORT_PATH)
+    }
 }
 
-suspend fun loadData() {
-    coroutineScope {
-        launch {
-            val klaxon = Klaxon()
-            val file = File(ROUTE_INFO_EXPORT_PATH)
-            val stream = GZIPInputStream(file.inputStream())
-            val jsonString = stream.bufferedReader().use { it.readText() }
-            val routeInfos = klaxon.parse<TestData>(jsonString)!!.routeInfos
-            testData.routeInfos.addAll(routeInfos)
-        }
-        launch {
-            val klaxon = Klaxon()
-            val dbFile = File(DB_EXPORT_PATH)
-            val dbStream = GZIPInputStream(dbFile.inputStream())
-            val jsonString = dbStream.bufferedReader().use { it.readText() }
-            val data = klaxon.parse<SharedData>(jsonString)
-            sharedData.requestableRoutes.addAll(data!!.requestableRoutes)
-            sharedData.requestableStops.addAll(data.requestableStops) //todo incorrect amount
-        }
-        launch {
-            val crsTransformationAdapter =
-                CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
-            val klaxon = Klaxon()
-            val file = ZipFile(BUS_STOPS_SOURCE_PATH)
-            val stream = file.getInputStream(file.entries().nextElement())
-            val jsonString = stream.bufferedReader().use { it.readText() }
-            val busStopFeature = klaxon.parse<BusStopRaw>(jsonString)!!.features
-            busStopFeature.forEach {
-                val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
-                    eastingNorthing(
-                        it.geometry.coordinates[0].toDouble(),
-                        it.geometry.coordinates[1].toDouble(),
-                        EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
-                    ), EpsgNumber.WORLD__WGS_84__4326
-                )
-                stops.add(
-                    Stop(it.properties.stopId, LatLng(crsCoordinate.getLatitude(), crsCoordinate.getLongitude()))
-                )
-            }
-            stops.sortBy { x -> x.stopId }
-        }
-    }
+data class FinalDatabase(val routes: List<Route>, val requestableStops: List<RequestableStop>) {
+    fun toJson() = Klaxon().toJsonString(this)
 }

@@ -1,4 +1,6 @@
-import Paths.Companion.BUS_STOPS_SOURCE_PATH
+package utils
+
+import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
@@ -77,7 +79,7 @@ class Utils {
             val crsTransformationAdapter =
                 CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
             val klaxon = Klaxon()
-            val file = ZipFile(BUS_STOPS_SOURCE_PATH)
+            val file = ZipFile(BUS_STOPS_GEOJSON_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             val jsonString = stream.bufferedReader().use { it.readText() }
             val busStopFeature = klaxon.parse<BusStopRaw>(jsonString)!!.features

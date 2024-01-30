@@ -1,12 +1,9 @@
-package controllers
+package utils
 
-import APIs
-import APIs.Companion.CTB_ALL_STOP
-import APIs.Companion.KMB_ALL_STOPS
-import Company
-import HttpHelper.Companion.get
-import HttpHelper.Companion.getAsync
-import Utils
+import utils.APIs.Companion.CTB_ALL_STOP
+import utils.APIs.Companion.KMB_ALL_STOPS
+import utils.HttpUtils.Companion.get
+import utils.HttpUtils.Companion.getAsync
 import data.RequestableStop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -19,7 +16,7 @@ import kotlinx.coroutines.sync.withLock
 import requestables
 import java.util.concurrent.CountDownLatch
 
-class StopController {
+class StopUtils {
     companion object {
         private val mutex = Mutex()
 

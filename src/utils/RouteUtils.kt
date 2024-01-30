@@ -1,16 +1,13 @@
-package controllers
+package utils
 
-import APIs.Companion.CTB_ALL_ROUTES
-import APIs.Companion.CTB_ROUTE_STOP
-import APIs.Companion.KMB_ALL_ROUTES
-import APIs.Companion.KMB_ROUTE_STOP
-import APIs.Companion.NLB_ALL_ROUTES
-import APIs.Companion.NLB_ROUTE_STOP
-import Bound
-import Company
-import HttpHelper.Companion.get
-import HttpHelper.Companion.getAsync
-import Utils
+import utils.APIs.Companion.CTB_ALL_ROUTES
+import utils.APIs.Companion.CTB_ROUTE_STOP
+import utils.APIs.Companion.KMB_ALL_ROUTES
+import utils.APIs.Companion.KMB_ROUTE_STOP
+import utils.APIs.Companion.NLB_ALL_ROUTES
+import utils.APIs.Companion.NLB_ROUTE_STOP
+import utils.HttpUtils.Companion.get
+import utils.HttpUtils.Companion.getAsync
 import data.RequestableRoute
 import json_models.*
 import kotlinx.coroutines.CoroutineScope
@@ -22,7 +19,7 @@ import okhttp3.Call
 import requestables
 import java.util.concurrent.CountDownLatch
 
-class RouteController {
+class RouteUtils {
     companion object {
         private val mutex = Mutex()
         fun getRoutes(company: Company): Int {
@@ -43,7 +40,8 @@ class RouteController {
                             val kmbRequestableRoutes = mutableListOf<RequestableRoute>()
                             val countDownLatch = CountDownLatch(kmbRoutes.size)
                             kmbRoutes.forEach {
-                                getRouteStopsAsync(Company.KMB,
+                                getRouteStopsAsync(
+                                    Company.KMB,
                                     it.route,
                                     it.bound,
                                     it.serviceType.toInt(),

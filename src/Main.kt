@@ -1,38 +1,52 @@
-import Patch.Companion.patchRoutes
-import Patch.Companion.patchStops
-import Paths.Companion.REQUESTABLES_EXPORT_PATH
-import Utils.Companion.execute
-import Utils.Companion.executeWithCount
-import Utils.Companion.writeToGZ
-import controllers.RouteController.Companion.getRoutes
-import controllers.StopController
-import controllers.StopController.Companion.getCtbStops
-import controllers.StopController.Companion.getKmbStops
-import controllers.StopController.Companion.getNlbStops
+import utils.HttpUtils.Companion.downloadIgnoreCertificate
+import utils.Patch.Companion.patchRoutes
+import utils.Patch.Companion.patchStops
+import utils.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
+import utils.Paths.Companion.BUS_ROUTES_GEOJSON_URL
+import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
+import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
+import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
+import utils.Utils.Companion.execute
+import utils.Utils.Companion.executeWithCount
+import utils.Utils.Companion.writeToGZ
+import utils.RouteUtils.Companion.getRoutes
+import utils.StopUtils
+import utils.StopUtils.Companion.getCtbStops
+import utils.StopUtils.Companion.getKmbStops
+import utils.StopUtils.Companion.getNlbStops
 import data.Requestables
+import utils.Company
+import kotlin.time.measureTime
 
-// todo log
+// todo log // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
 // todo get fare
 // todo MTRB routes
 
 val requestables: Requestables = Requestables()
 
 suspend fun main() {
-    // I. Build requestable routes and stops
-    buildRequestables()
+    val t = measureTime {
+        // I. Build requestable routes and stops
+        buildRequestables()
 
-    // II. Download routeInfo-path file todo
-//    execute("Downloading GEOJSON file...") {
-//        download(GEOJSON_URL)
-//    }
+        // II. Download routeInfo-path file
+        execute("Downloading $BUS_ROUTES_GEOJSON_PATH ...") {
+            downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
+        }
 
-    // III. Parse routeInfo
-    execute("Parsing routeInfo...", true) {
-        MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = false, pathIDsToWrite = null)
+        execute("Downloading $BUS_STOPS_GEOJSON_PATH ...") {
+            downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
+        }
+
+        // III. Parse routeInfo
+        execute("Parsing routeInfo...", true) {
+            MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = false, pathIDsToWrite = null)
+        }
+
+        // IV. Run analyzer (match paths and merge routes)
+        runAnalyzer()
     }
-
-    // IV. Run analyzer (match paths and merge routes)
-    runAnalyzer()
+    println("Finished all tasks in $t")
 }
 
 private fun buildRequestables() {
@@ -45,7 +59,7 @@ private fun buildRequestables() {
     executeWithCount("Getting KMB stops...") { getKmbStops() }
     executeWithCount("Getting CTB stops...") { getCtbStops() }
     executeWithCount("Getting NLB stops...") { getNlbStops() }
-    StopController.validateStops()
+    StopUtils.validateStops()
 
     // 3. Patch requestables
     execute("Patching requestables...") {
@@ -57,8 +71,4 @@ private fun buildRequestables() {
     execute("Writing requestables \"$REQUESTABLES_EXPORT_PATH\"...") {
         writeToGZ(requestables.toJson(), REQUESTABLES_EXPORT_PATH)
     }
-//    execute("Writing to route only database (for debugging) \"${REQUESTABLE_ROUTES_EXPORT_PATH}\"...") {
-//        val sharedDataRouteOnly = sharedData.copy(requestableStops = mutableListOf())
-//        writeToGZ(sharedDataRouteOnly.toJson(), REQUESTABLE_ROUTES_EXPORT_PATH)
-//    }
 }

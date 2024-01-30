@@ -1,7 +1,7 @@
 package data
 
-import Bound
-import Company
+import utils.Bound
+import utils.Company
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 

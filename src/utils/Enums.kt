@@ -1,3 +1,5 @@
+package utils
+
 enum class Company(val value: String) {
     KMB("KMB"), CTB("CTB"), NLB("NLB"), MTRB("MTRB");
 

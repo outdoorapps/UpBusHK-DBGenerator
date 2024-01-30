@@ -4,7 +4,7 @@ package json_models
 //
 //   val kmbRouteStop = KmbRouteStop.fromJson(jsonString)
 
-import Bound
+import utils.Bound
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 

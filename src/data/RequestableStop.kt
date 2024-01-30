@@ -1,6 +1,6 @@
 package data
 
-import Company
+import utils.Company
 import com.beust.klaxon.Klaxon
 
 data class RequestableStop(

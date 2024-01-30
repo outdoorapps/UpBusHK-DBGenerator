@@ -1,6 +1,6 @@
 package data
 
-import Bound
+import utils.Bound
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 

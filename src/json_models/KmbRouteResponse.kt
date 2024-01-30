@@ -1,6 +1,6 @@
 package json_models
 
-import Bound
+import utils.Bound
 import com.beust.klaxon.Converter
 import com.beust.klaxon.Json
 import com.beust.klaxon.JsonValue

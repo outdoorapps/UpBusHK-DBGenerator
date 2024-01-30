@@ -1,11 +1,4 @@
-import utils.Paths.Companion.ARCHIVE_EXPORT_PATH
-import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
-import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
-import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
-import utils.Paths.Companion.ROUTE_INFO_EXPORT_PATH
-import utils.Utils.Companion.execute
-import utils.Utils.Companion.loadGovRecordStop
-import utils.Utils.Companion.writeToJsonFile
+import Analyzer.Companion.intermediates
 import com.beust.klaxon.Klaxon
 import data.*
 import kotlinx.coroutines.coroutineScope
@@ -15,7 +8,15 @@ import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import utils.Company
+import utils.Paths.Companion.ARCHIVE_EXPORT_PATH
+import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
+import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
+import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
+import utils.Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import utils.Utils
+import utils.Utils.Companion.execute
+import utils.Utils.Companion.loadGovRecordStop
+import utils.Utils.Companion.writeToJsonFile
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
@@ -27,6 +28,7 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
     companion object {
         const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
         const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
+        val intermediates = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
     }
 
     private val kmbRequestableRoutes = requestables.requestableRoutes.filter { it.company == Company.KMB }
@@ -306,35 +308,38 @@ suspend fun runAnalyzer() {
         requestables.requestableStops.addAll(stops)
     }
 
-    execute("Writing database \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
-        writeToJsonFile(RoutesStopsDatabase(analyzer.routes, requestables.requestableStops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
+    execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
+        writeToJsonFile(
+            RoutesStopsDatabase(analyzer.routes, requestables.requestableStops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH
+        )
     }
 
-    execute("Writing paths...", true) {
+    execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
         val pathIDs = mutableSetOf<Int>()
         analyzer.routes.forEach { if (it.pathId != null) pathIDs.add(it.pathId) }
         MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs)
     }
 
     execute("Compressing files to archive...") {
-        val paths = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
         val output = FileOutputStream(ARCHIVE_EXPORT_PATH)
         val xzOStream = XZOutputStream(output, LZMA2Options())
-        val tos = TarArchiveOutputStream(xzOStream)
-        tos.use {
-            for (path in paths) {
+        TarArchiveOutputStream(xzOStream).use {
+            intermediates.forEach { path ->
                 val file = File(path)
                 FileInputStream(file).use { input ->
                     val entry = TarArchiveEntry(file.name)
                     entry.size = file.length()
-                    tos.putArchiveEntry(entry)
-                    input.copyTo(tos)
-                    tos.closeArchiveEntry()
+                    it.putArchiveEntry(entry)
+                    input.copyTo(it)
+                    it.closeArchiveEntry()
                 }
             }
         }
     }
+
+    execute("Cleaning up intermediates...") { intermediates.forEach { File(it).delete() } }
 }
+
 suspend fun main() {
     runAnalyzer()
 }

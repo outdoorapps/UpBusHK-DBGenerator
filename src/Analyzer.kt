@@ -185,7 +185,6 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
                     kmbRoute.destChiS,
                     kmbRoute.kmbServiceType,
                     null,
-                    routeInfo?.routeId,
                     routeInfo?.objectId,
                     kmbRoute.stops,
                     secondaryStops
@@ -215,7 +214,6 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
                     it.destChiS,
                     it.kmbServiceType,
                     null,
-                    routeInfo?.routeId,
                     routeInfo?.objectId,
                     it.stops,
                     emptyList()
@@ -243,7 +241,6 @@ class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRe
                     it.destChiS,
                     it.kmbServiceType,
                     null,
-                    routeInfo?.routeId,
                     routeInfo?.objectId,
                     it.stops,
                     emptyList()

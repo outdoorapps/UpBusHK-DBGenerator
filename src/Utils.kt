@@ -1,18 +1,12 @@
 import Paths.Companion.BUS_STOPS_SOURCE_PATH
-import Paths.Companion.REQUESTABLES_EXPORT_PATH
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.GovRecordStop
-import data.Requestables
 import json_models.BusStopRaw
-import org.tukaani.xz.LZMA2Options
-import org.tukaani.xz.XZOutputStream
-import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
-import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
 import kotlin.math.cos
@@ -71,13 +65,10 @@ class Utils {
             }
         }
 
-        fun writeToXZ(data: String, path: String) {
+        fun writeToJsonFile(data: String, path: String) {
             val output = FileOutputStream(path)
-            val xzOStream = XZOutputStream(output, LZMA2Options())
             output.use {
-                xzOStream.use { w ->
-                    w.write(data.toByteArray())
-                }
+                it.write(data.toByteArray())
             }
         }
 

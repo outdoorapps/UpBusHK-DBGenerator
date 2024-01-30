@@ -1,28 +1,24 @@
 import Paths.Companion.ARCHIVE_EXPORT_PATH
-import Paths.Companion.BUS_STOPS_SOURCE_PATH
-import Paths.Companion.PATH_DB_EXPORT_PATH
+import Paths.Companion.DB_PATHS_EXPORT_PATH
 import Paths.Companion.REQUESTABLES_EXPORT_PATH
-import Paths.Companion.ROUTES_STOPS_DB_EXPORT_PATH
+import Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import Utils.Companion.execute
 import Utils.Companion.loadGovRecordStop
-import Utils.Companion.writeToXZ
+import Utils.Companion.writeToJsonFile
 import com.beust.klaxon.Klaxon
-import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
-import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
-import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.*
-import json_models.BusStopRaw
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import org.tukaani.xz.LZMA2Options
+import org.tukaani.xz.XZOutputStream
 import java.io.File
 import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.math.RoundingMode
 import java.util.zip.GZIPInputStream
-import java.util.zip.ZipFile
 import kotlin.time.measureTime
 
 class Analyzer(private val routeInfos: MutableList<RouteInfo>, private val govRecordStops: MutableList<GovRecordStop>) {
@@ -308,8 +304,8 @@ suspend fun runAnalyzer() {
         requestables.requestableStops.addAll(stops)
     }
 
-    execute("Writing database \"$ROUTES_STOPS_DB_EXPORT_PATH\"...") {
-        writeToXZ(RoutesStopsDatabase(analyzer.routes, requestables.requestableStops).toJson(), ROUTES_STOPS_DB_EXPORT_PATH)
+    execute("Writing database \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
+        writeToJsonFile(RoutesStopsDatabase(analyzer.routes, requestables.requestableStops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
     }
 
     execute("Writing paths...", true) {
@@ -319,10 +315,13 @@ suspend fun runAnalyzer() {
     }
 
     execute("Compressing files to archive...") {
-        val files = listOf(File(ROUTES_STOPS_DB_EXPORT_PATH), File(PATH_DB_EXPORT_PATH))
+        val paths = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
         val output = FileOutputStream(ARCHIVE_EXPORT_PATH)
-        TarArchiveOutputStream(output).use { tos ->
-            for (file in files) {
+        val xzOStream = XZOutputStream(output, LZMA2Options())
+        val tos = TarArchiveOutputStream(xzOStream)
+        tos.use {
+            for (path in paths) {
+                val file = File(path)
                 FileInputStream(file).use { input ->
                     val entry = TarArchiveEntry(file.name)
                     entry.size = file.length()

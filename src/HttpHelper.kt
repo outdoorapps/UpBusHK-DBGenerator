@@ -1,5 +1,7 @@
 import okhttp3.*
+import java.io.FileOutputStream
 import java.io.IOException
+
 
 class HttpHelper {
     companion object {
@@ -28,16 +30,6 @@ class HttpHelper {
         }
 
         fun get(url: String): String {
-            val request = Request.Builder().url(url).build()
-            okHttpClient.newCall(request).execute().use {
-                if (it.isSuccessful && it.body != null) {
-                    return it.body?.string() ?: ""
-                }
-            }
-            return ""
-        }
-
-        fun download(url: String): String {
             val request = Request.Builder().url(url).build()
             okHttpClient.newCall(request).execute().use {
                 if (it.isSuccessful && it.body != null) {

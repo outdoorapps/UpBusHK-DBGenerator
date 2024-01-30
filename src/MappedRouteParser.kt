@@ -1,5 +1,5 @@
-import Paths.Companion.GEOJSON_PATH
-import Paths.Companion.PATH_DB_EXPORT_PATH
+import Paths.Companion.BUS_ROUTES_GEOJSON_PATH
+import Paths.Companion.DB_PATHS_EXPORT_PATH
 import Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import Utils.Companion.execute
 import com.beust.klaxon.JsonReader
@@ -9,8 +9,6 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.*
-import org.tukaani.xz.LZMA2Options
-import org.tukaani.xz.XZOutputStream
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.Writer
@@ -30,15 +28,12 @@ class MappedRouteParser {
         // pathIDsToWrite: Write all paths if null
         fun parseFile(parseRouteInfo: Boolean, parsePaths: Boolean, pathIDsToWrite: Set<Int>?) {
             var routeInfos: List<RouteInfo>
-            val pathOutput = FileOutputStream(PATH_DB_EXPORT_PATH)
+            val pathOutput = FileOutputStream(DB_PATHS_EXPORT_PATH)
             if (parsePaths) {
                 pathOutput.use {
-                    val xzOutStream = XZOutputStream(it, LZMA2Options())
-                    xzOutStream.use {
-                        xzOutStream.write("{[".toByteArray())
-                        routeInfos = readFile(xzOutStream, pathIDsToWrite)
-                        xzOutStream.write("]}".toByteArray())
-                    }
+                    pathOutput.write("{[".toByteArray())
+                    routeInfos = readFile(pathOutput, pathIDsToWrite)
+                    pathOutput.write("]}".toByteArray())
                 }
             } else {
                 routeInfos = readFile(null, null)
@@ -56,9 +51,9 @@ class MappedRouteParser {
         }
 
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
-        private fun readFile(xzOutStream: XZOutputStream?, pathIDsToWrite: Set<Int>?): List<RouteInfo> {
+        private fun readFile(fos: FileOutputStream?, pathIDsToWrite: Set<Int>?): List<RouteInfo> {
             val routeInfos = mutableListOf<RouteInfo>()
-            val file = ZipFile(GEOJSON_PATH)
+            val file = ZipFile(BUS_ROUTES_GEOJSON_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             var pathsWritten = 0
 
@@ -89,22 +84,24 @@ class MappedRouteParser {
                             "features" -> it.beginArray {
                                 while (it.hasNext()) {
                                     val time = measureTime {
-                                        val route = getMappedRoute(it, xzOutStream == null)
+                                        val route = getMappedRoute(it, fos == null)
                                         routeInfos.add(route.routeInfo)
 
-                                        if (pathIDsToWrite == null || pathIDsToWrite.contains(route.routeInfo.objectId)) {
-                                            val polyLine = route.multiLineString.map { crsCoordinate ->
-                                                val lat = crsCoordinate.getLatitude().toBigDecimal()
-                                                    .setScale(5, RoundingMode.HALF_EVEN).toDouble()
-                                                val long = crsCoordinate.getLongitude().toBigDecimal()
-                                                    .setScale(5, RoundingMode.HALF_EVEN).toDouble()
-                                                listOf(lat, long)
+                                        if (fos != null) {
+                                            if (pathIDsToWrite == null || pathIDsToWrite.contains(route.routeInfo.objectId)) {
+                                                val polyLine = route.multiLineString.map { crsCoordinate ->
+                                                    val lat = crsCoordinate.getLatitude().toBigDecimal()
+                                                        .setScale(5, RoundingMode.HALF_EVEN).toDouble()
+                                                    val long = crsCoordinate.getLongitude().toBigDecimal()
+                                                        .setScale(5, RoundingMode.HALF_EVEN).toDouble()
+                                                    listOf(lat, long)
+                                                }
+                                                fos.write(
+                                                    Path(route.routeInfo.objectId, polyLine).toJson().toByteArray()
+                                                )
+                                                if (it.hasNext()) fos.write(",".toByteArray())
+                                                pathsWritten++
                                             }
-                                            xzOutStream?.write(
-                                                Path(route.routeInfo.objectId, polyLine).toJson().toByteArray()
-                                            )
-                                            if (it.hasNext()) xzOutStream?.write(",".toByteArray())
-                                            pathsWritten++
                                         }
                                     }
                                     t = t.plus(time)
@@ -117,7 +114,7 @@ class MappedRouteParser {
                     }
                 }
             }
-            println("- $pathsWritten paths written")
+            if (fos != null) println("- $pathsWritten paths written")
             return routeInfos
         }
 

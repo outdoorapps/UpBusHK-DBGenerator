@@ -1,12 +1,12 @@
 package utils
 
-import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import data.GovRecordStop
-import json_models.BusStopRaw
+import data.GovStop
+import json_models.GovStopRaw
+import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.util.zip.GZIPOutputStream
@@ -74,15 +74,15 @@ class Utils {
             }
         }
 
-        fun loadGovRecordStop(): List<GovRecordStop> {
-            val govRecordStops = mutableListOf<GovRecordStop>()
+        fun loadGovRecordStop(): List<GovStop> {
+            val govStops = mutableListOf<GovStop>()
             val crsTransformationAdapter =
                 CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
             val klaxon = Klaxon()
             val file = ZipFile(BUS_STOPS_GEOJSON_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             val jsonString = stream.bufferedReader().use { it.readText() }
-            val busStopFeature = klaxon.parse<BusStopRaw>(jsonString)!!.features
+            val busStopFeature = klaxon.parse<GovStopRaw>(jsonString)!!.features
             busStopFeature.forEach {
                 val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
                     eastingNorthing(
@@ -91,15 +91,15 @@ class Utils {
                         EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
                     ), EpsgNumber.WORLD__WGS_84__4326
                 )
-                govRecordStops.add(
-                    GovRecordStop(
+                govStops.add(
+                    GovStop(
                         it.properties.stopId,
                         mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
                     )
                 )
             }
-            govRecordStops.sortBy { x -> x.stopId }
-            return govRecordStops
+            govStops.sortBy { x -> x.stopId }
+            return govStops
         }
     }
 }

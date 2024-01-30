@@ -5,7 +5,7 @@ import utils.Company
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-data class RequestableRoute(
+data class CompanyRoute(
     val company: Company,
     val number: String,
     val bound: Bound,

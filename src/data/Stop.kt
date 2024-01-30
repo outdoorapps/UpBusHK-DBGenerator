@@ -1,15 +1,15 @@
 package data
 
-import utils.Company
 import com.beust.klaxon.Klaxon
+import utils.Company
 
-data class RequestableStop(
+data class Stop(
     val company: Company,
     val stopId: String,
     val engName: String,
     val chiTName: String,
     val chiSName: String,
-    val latLng: List<Double>
+    val latLngCoord: List<Double>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

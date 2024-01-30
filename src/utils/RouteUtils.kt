@@ -1,5 +1,13 @@
 package utils
 
+import data.CompanyRoute
+import json_models.*
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import okhttp3.Call
 import utils.APIs.Companion.CTB_ALL_ROUTES
 import utils.APIs.Companion.CTB_ROUTE_STOP
 import utils.APIs.Companion.KMB_ALL_ROUTES
@@ -8,22 +16,13 @@ import utils.APIs.Companion.NLB_ALL_ROUTES
 import utils.APIs.Companion.NLB_ROUTE_STOP
 import utils.HttpUtils.Companion.get
 import utils.HttpUtils.Companion.getAsync
-import data.RequestableRoute
-import json_models.*
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
-import okhttp3.Call
-import requestables
 import java.util.concurrent.CountDownLatch
 
 class RouteUtils {
     companion object {
         private val mutex = Mutex()
-        fun getRoutes(company: Company): Int {
-            var routesAdded = 0
+        fun getRoutes(company: Company): List<CompanyRoute> {
+            val companyRoutes = mutableListOf<CompanyRoute>()
             try {
                 val url = when (company) {
                     Company.KMB -> KMB_ALL_ROUTES
@@ -37,7 +36,7 @@ class RouteUtils {
                     Company.KMB -> {
                         val kmbRoutes = KmbRouteResponse.fromJson(response)?.data
                         if (!kmbRoutes.isNullOrEmpty()) {
-                            val kmbRequestableRoutes = mutableListOf<RequestableRoute>()
+                            val kmbCompanyRoutes = mutableListOf<CompanyRoute>()
                             val countDownLatch = CountDownLatch(kmbRoutes.size)
                             kmbRoutes.forEach {
                                 getRouteStopsAsync(
@@ -49,7 +48,7 @@ class RouteUtils {
                                         countDownLatch.countDown()
                                     },
                                     onResponse = { stops ->
-                                        val newRoute = RequestableRoute(
+                                        val newRoute = CompanyRoute(
                                             Company.KMB,
                                             it.route,
                                             it.bound,
@@ -65,20 +64,19 @@ class RouteUtils {
                                         )
                                         CoroutineScope(Dispatchers.IO).launch {
                                             mutex.withLock {
-                                                kmbRequestableRoutes.add(newRoute)
+                                                kmbCompanyRoutes.add(newRoute)
                                                 countDownLatch.countDown()
                                             }
                                         }
                                     })
                             }
                             countDownLatch.await()
-                            kmbRequestableRoutes.sortWith(
+                            kmbCompanyRoutes.sortWith(
                                 compareBy({ it.number.toInt(Character.MAX_RADIX) },
                                     { it.bound },
                                     { it.kmbServiceType })
                             )
-                            requestables.requestableRoutes.addAll(kmbRequestableRoutes)
-                            routesAdded = kmbRequestableRoutes.size
+                            companyRoutes.addAll(kmbCompanyRoutes)
                         }
                     }
 
@@ -87,7 +85,7 @@ class RouteUtils {
                         if (!ctbRoutes.isNullOrEmpty()) {
                             val totalCount = ctbRoutes.size * 2
                             val countDownLatch = CountDownLatch(totalCount)
-                            val ctbRequestableRoutes = mutableListOf<RequestableRoute>()
+                            val ctbCompanyRoutes = mutableListOf<CompanyRoute>()
                             val start = System.currentTimeMillis()
 
                             ctbRoutes.forEach {
@@ -98,7 +96,7 @@ class RouteUtils {
                                         println("Request for CTB ${it.route} failed")
                                     }, onResponse = { stops ->
                                         if (stops.isNotEmpty()) {
-                                            val newRoute = RequestableRoute(
+                                            val newRoute = CompanyRoute(
                                                 Company.CTB,
                                                 it.route,
                                                 bound,
@@ -114,7 +112,7 @@ class RouteUtils {
                                             )
                                             CoroutineScope(Dispatchers.IO).launch {
                                                 mutex.withLock {
-                                                    ctbRequestableRoutes.add(newRoute)
+                                                    ctbCompanyRoutes.add(newRoute)
                                                     countDownLatch.countDown()
                                                 }
                                             }
@@ -133,11 +131,10 @@ class RouteUtils {
                                 }
                             }
                             countDownLatch.await()
-                            ctbRequestableRoutes.sortWith(
+                            ctbCompanyRoutes.sortWith(
                                 compareBy({ it.number.toInt(Character.MAX_RADIX) }, { it.bound })
                             )
-                            requestables.requestableRoutes.addAll(ctbRequestableRoutes)
-                            routesAdded = ctbRequestableRoutes.size
+                            companyRoutes.addAll(ctbCompanyRoutes)
                         }
                     }
 
@@ -145,9 +142,9 @@ class RouteUtils {
                         val nlbRoutes = NlbRouteResponse.fromJson(response)?.routes?.toMutableList()
                             ?.sortedBy { it.routeId.toInt() }
                         if (!nlbRoutes.isNullOrEmpty()) {
-                            val nlbRequestableRoutes = mutableListOf<RequestableRoute>()
+                            val nlbCompanyRoutes = mutableListOf<CompanyRoute>()
                             nlbRoutes.forEach {
-                                val result = nlbRequestableRoutes.find { route -> route.number == it.routeNo }
+                                val result = nlbCompanyRoutes.find { route -> route.number == it.routeNo }
                                 val originEn = it.routeNameE.split('>')[0].trim()
                                 val destEn = it.routeNameE.split('>')[1].trim()
                                 val bound: Bound = if (result == null) {
@@ -160,8 +157,8 @@ class RouteUtils {
                                     }
                                 }
                                 val stops = getRouteStops(Company.NLB, it.routeId, null, null)
-                                requestables.requestableRoutes.add(
-                                    RequestableRoute(
+                                companyRoutes.add(
+                                    CompanyRoute(
                                         Company.NLB,
                                         it.routeNo,
                                         bound,
@@ -176,7 +173,6 @@ class RouteUtils {
                                         stops
                                     )
                                 )
-                                routesAdded++
                             }
                         }
                     }
@@ -186,7 +182,7 @@ class RouteUtils {
             } catch (e: Exception) {
                 println("Error occurred while getting ${company.name.uppercase()} routes \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
             }
-            return routesAdded
+            return companyRoutes
         }
 
         private fun getRouteStops(

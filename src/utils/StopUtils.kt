@@ -1,10 +1,8 @@
 package utils
 
-import utils.APIs.Companion.CTB_ALL_STOP
-import utils.APIs.Companion.KMB_ALL_STOPS
-import utils.HttpUtils.Companion.get
-import utils.HttpUtils.Companion.getAsync
-import data.RequestableStop
+import data.CompanyRoute
+import data.RequestedData
+import data.Stop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
 import json_models.NlbRouteStopResponse
@@ -13,21 +11,24 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import requestables
+import utils.APIs.Companion.CTB_ALL_STOP
+import utils.APIs.Companion.KMB_ALL_STOPS
+import utils.HttpUtils.Companion.get
+import utils.HttpUtils.Companion.getAsync
 import java.util.concurrent.CountDownLatch
 
 class StopUtils {
     companion object {
         private val mutex = Mutex()
 
-        fun getKmbStops(): Int {
-            var stopsAdded = 0
+        fun getKmbStops(): List<Stop> {
+            val stops = mutableListOf<Stop>()
             try {
                 val response = get(KMB_ALL_STOPS)
                 val kmbStops = KmbStopResponse.fromJson(response)?.data
                 if (!kmbStops.isNullOrEmpty()) {
                     val newStops = kmbStops.map { x ->
-                        RequestableStop(
+                        Stop(
                             Company.KMB,
                             x.stop,
                             x.nameEn,
@@ -36,19 +37,18 @@ class StopUtils {
                             mutableListOf(x.lat.toDouble(), x.long.toDouble())
                         )
                     }
-                    requestables.requestableStops.addAll(newStops.sortedBy { it.stopId })
-                    stopsAdded = newStops.size
+                    stops.addAll(newStops.sortedBy { it.stopId })
                 }
             } catch (e: Exception) {
                 println("Error occurred while getting KMB stops \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
             }
-            return stopsAdded
+            return stops
         }
 
-        fun getCtbStops(): Int {
-            val ctbRequestableRoutes = requestables.requestableRoutes.filter { it.company == Company.CTB }
+        fun getCtbStops(companyRoutes: List<CompanyRoute>): List<Stop> {
+            val ctbRequestableRoutes = companyRoutes.filter { it.company == Company.CTB }
             val ctbStopIDs = mutableListOf<String>()
-            val ctbStops = mutableListOf<RequestableStop>()
+            val ctbStops = mutableListOf<Stop>()
 
             ctbRequestableRoutes.forEach {
                 it.stops.forEach { stop -> if (!ctbStopIDs.contains(stop)) ctbStopIDs.add(stop) }
@@ -66,7 +66,7 @@ class StopUtils {
                     }, onResponse = fun(responseBody) {
                         val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
                         if (ctbStop?.stop != null) {
-                            val newStop = RequestableStop(
+                            val newStop = Stop(
                                 Company.CTB,
                                 ctbStop.stop,
                                 ctbStop.nameEn!!,
@@ -96,13 +96,12 @@ class StopUtils {
             }
             countDownLatch.await()
             ctbStops.sortBy { it.stopId }
-            requestables.requestableStops.addAll(ctbStops)
-            return ctbStops.size
+            return ctbStops
         }
 
-        fun getNlbStops(): Int {
-            val nlbRoutes = requestables.requestableRoutes.filter { x -> x.company == Company.NLB }
-            val nlbStops = mutableListOf<RequestableStop>()
+        fun getNlbStops(companyRoutes: List<CompanyRoute>): List<Stop> {
+            val nlbRoutes = companyRoutes.filter { x -> x.company == Company.NLB }
+            val nlbStops = mutableListOf<Stop>()
 
             val countDownLatch = CountDownLatch(nlbRoutes.size)
             nlbRoutes.forEach { requestableRoute ->
@@ -119,7 +118,7 @@ class StopUtils {
                                 nlbStop.forEach {
                                     if (!nlbStops.any { x -> (x.stopId == it.stop) }) {
                                         nlbStops.add(
-                                            RequestableStop(
+                                            Stop(
                                                 Company.NLB,
                                                 it.stop,
                                                 it.stopNameE,
@@ -140,16 +139,15 @@ class StopUtils {
             }
             countDownLatch.await()
             nlbStops.sortBy { it.stopId }
-            requestables.requestableStops.addAll(nlbStops)
-            return nlbStops.size
+            return nlbStops
         }
 
-        fun validateStops(): List<String> {
+        fun validateStops(requestedData: RequestedData): List<String> {
             print("Validating stops...")
             val noMatchStops = mutableListOf<String>()
-            requestables.requestableRoutes.forEach {
+            requestedData.companyRoutes.forEach {
                 it.stops.forEach { stop ->
-                    if (!requestables.requestableStops.any { requestableStop -> requestableStop.stopId == stop }) {
+                    if (!requestedData.stops.any { requestableStop -> requestableStop.stopId == stop }) {
                         if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
                     }
                 }

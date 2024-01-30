@@ -2,6 +2,8 @@ package data
 
 import com.beust.klaxon.Klaxon
 
-data class Path(val id: Int, val coords: List<List<Double>>) {
+data class RSDatabase(
+    val routes: List<Route>, val stops: List<Stop>
+) {
     fun toJson() = Klaxon().toJsonString(this)
 }

@@ -1,7 +1,7 @@
 package utils
 
-import data.RequestableRoute
-import data.RequestableStop
+import data.CompanyRoute
+import data.Stop
 
 class Patch {
     companion object {
@@ -14,19 +14,19 @@ class Patch {
             "376C4835851621D4" to "2560149CE75EABA0", "B7A9E1A243516288" to "E5421509D8FC00AF"
         )
 
-        fun patchStops(stops: MutableList<RequestableStop>) {
+        fun patchStops(stops: MutableList<Stop>) {
             stopPatchMap.forEach { (missingStopId, pairingStopId) ->
                 // Check if the stop ID is truly missing
                 if (!stops.any { stop -> stop.stopId == missingStopId }) {
                     val pairingStop = stops.find { requestableStop -> requestableStop.stopId == pairingStopId }
                     if (pairingStop != null) stops.add(
-                        RequestableStop(
+                        Stop(
                             Company.KMB,
                             missingStopId,
                             pairingStop.engName,
                             pairingStop.chiTName,
                             pairingStop.chiSName,
-                            pairingStop.latLng
+                            pairingStop.latLngCoord
                         )
                     )
                 }
@@ -34,7 +34,7 @@ class Patch {
             stops.sortBy { it.stopId }
         }
 
-        fun patchRoutes(routes: MutableList<RequestableRoute>) {
+        fun patchRoutes(routes: MutableList<CompanyRoute>) {
             val routes1 = routes.filter { it.company == Company.KMB && it.number == "107" && it.bound == Bound.O }
             routes1.forEach {
                 val newStops = it.stops.toMutableList()
@@ -63,7 +63,7 @@ class Patch {
             )
         }
 
-        private fun patchCTBRoutes(routes: MutableList<RequestableRoute>) {
+        private fun patchCTBRoutes(routes: MutableList<CompanyRoute>) {
             val outboundRoute = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.O }
             val inboundRoute = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.I }
             routes.remove(outboundRoute)

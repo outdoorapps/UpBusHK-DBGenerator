@@ -9,13 +9,13 @@ import data.CRS
 
 private val klaxon = Klaxon()
 
-data class BusStopRaw(
+data class GovStopRaw(
     val type: String, val name: String, val crs: CRS, val features: List<Feature>
 ) {
     fun toJson() = klaxon.toJsonString(this)
 
     companion object {
-        fun fromJson(json: String) = klaxon.parse<BusStopRaw>(json)
+        fun fromJson(json: String) = klaxon.parse<GovStopRaw>(json)
     }
 }
 

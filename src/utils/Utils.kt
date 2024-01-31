@@ -101,5 +101,11 @@ class Utils {
             govStops.sortBy { x -> x.stopId }
             return govStops
         }
+
+        fun getCompanies(companyCode: String): Set<Company> =
+            companyCode.split("+").map { Company.fromValue(it) }.toSet()
+
+        fun isSolelyOfCompany(company: Company, companies: Set<Company>): Boolean =
+            companies.size == 1 && companies.contains(company)
     }
 }

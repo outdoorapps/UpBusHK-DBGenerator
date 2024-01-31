@@ -16,6 +16,8 @@ import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
 import utils.Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import utils.Utils
 import utils.Utils.Companion.execute
+import utils.Utils.Companion.getCompanies
+import utils.Utils.Companion.isSolelyOfCompany
 import utils.Utils.Companion.loadGovRecordStop
 import utils.Utils.Companion.writeToJsonFile
 import java.io.File
@@ -59,25 +61,23 @@ class Analyzer(
         println("KMB:${kmbRequestableRoutes.size}, CTB:${ctbRequestableRoutes.size}, NLB:${nlbRequestableRoutes.size}, Joint (unique route number):${jointRouteNumbers.size}")
     }
 
-    private fun isJointRoute(companyRoute: CompanyRoute): Boolean =
-        jointRouteNumbers.contains(companyRoute.number)
+    private fun isJointRoute(companyRoute: CompanyRoute): Boolean = jointRouteNumbers.contains(companyRoute.number)
 
-    private fun getRouteInfoCandidates(companyRoute: CompanyRoute): List<RouteInfo> =
-        when (companyRoute.company) {
-            Company.KMB -> routeInfos.filter { info ->
-                (info.companyCode.contains(companyRoute.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == companyRoute.number
-            }
-
-            Company.CTB -> routeInfos.filter { info ->
-                info.companyCode.contains(companyRoute.company.value) && info.routeNameE == companyRoute.number
-            }
-
-            Company.NLB -> routeInfos.filter { info ->
-                info.companyCode.contains(companyRoute.company.value) && info.routeNameE == companyRoute.number
-            }
-
-            Company.MTRB -> TODO()
+    private fun getRouteInfoCandidates(companyRoute: CompanyRoute): List<RouteInfo> = when (companyRoute.company) {
+        Company.KMB -> routeInfos.filter { info ->
+            (info.companyCode.contains(companyRoute.company.value) || info.companyCode.contains("LWB")) && info.routeNameE == companyRoute.number
         }
+
+        Company.CTB -> routeInfos.filter { info ->
+            info.companyCode.contains(companyRoute.company.value) && info.routeNameE == companyRoute.number
+        }
+
+        Company.NLB -> routeInfos.filter { info ->
+            info.companyCode.contains(companyRoute.company.value) && info.routeNameE == companyRoute.number
+        }
+
+        Company.MTRB -> TODO()
+    }
 
     private fun getRouteInfo(companyRoute: CompanyRoute): RouteInfo? =
         getRouteInfoCandidates(companyRoute).find { info ->
@@ -173,14 +173,16 @@ class Analyzer(
                     jointRoutes.add(kmbRoute)
                 }
             }
-            if (routeInfo != null) {
+            val companies = if (routeInfo != null) {
                 routeInfos.remove(routeInfo)
+                getCompanies(routeInfo.companyCode)
             } else {
                 if (isJointRoute(kmbRoute)) unmappedJointRoutes.add(kmbRoute) else unmappedKmbRoutes.add(kmbRoute)
+                setOf(Company.KMB)
             }
             routes.add(
                 Route(
-                    routeInfo?.companyCode ?: kmbRoute.company.value,
+                    companies,
                     kmbRoute.number,
                     kmbRoute.bound,
                     kmbRoute.originEn,
@@ -200,16 +202,16 @@ class Analyzer(
 
         ctbRequestableRoutes.filter { !isJointRoute(it) }.forEach {
             val routeInfo: RouteInfo? = getRouteInfo(it)
-            val candidates = getRouteInfoCandidates(it)
-            val companyCode = if (candidates.isEmpty()) it.company.value else candidates.last().companyCode
-            if (routeInfo != null) {
+            val companies = if (routeInfo != null) {
                 routeInfos.remove(routeInfo)
+                getCompanies(routeInfo.companyCode)
             } else {
                 unmappedCtbRoutes.add(it)
+                setOf(Company.CTB)
             }
             routes.add(
                 Route(
-                    companyCode,
+                    companies,
                     it.number,
                     it.bound,
                     it.originEn,
@@ -229,14 +231,16 @@ class Analyzer(
 
         nlbRequestableRoutes.forEach {
             val routeInfo: RouteInfo? = getRouteInfo(it)
-            if (routeInfo != null) {
+            val companies = if (routeInfo != null) {
                 routeInfos.remove(routeInfo)
+                getCompanies(routeInfo.companyCode)
             } else {
                 unmappedNlbRoutes.add(it)
+                setOf(Company.NLB)
             }
             routes.add(
                 Route(
-                    Company.NLB.value,
+                    companies,
                     it.number,
                     it.bound,
                     it.originEn,
@@ -253,15 +257,18 @@ class Analyzer(
                 )
             )
         }
-        println("- KMB routes: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size} (" + "mapped: ${routes.filter { it.companyCode == "KMB" || it.companyCode == "LWB" }.size - unmappedKmbRoutes.size}, " + "unmapped: ${unmappedKmbRoutes.size})"
-        )
-        println("- CTB routes: ${routes.filter { it.companyCode == "CTB" }.size} (mapped: ${routes.filter { it.companyCode == "CTB" }.size - unmappedCtbRoutes.size}, unmapped: ${unmappedCtbRoutes.size})"
-        )
-        println("- NLB routes: ${routes.filter { it.companyCode == "NLB" }.size} (mapped: ${routes.filter { it.companyCode == "NLB" }.size - unmappedNlbRoutes.size}, unmapped: ${unmappedNlbRoutes.size})"
-        )
-        println(
-            "- Joint routes: ${routes.filter { it.companyCode.contains("+") }.size} (mapped: ${jointRoutes.size - unmappedJointRoutes.size}, unmapped: ${unmappedJointRoutes.size})"
-        )
+        val kmbRouteCount = routes.filter { isSolelyOfCompany(Company.KMB, it.companies) }.size
+        val ctbRouteCount = routes.filter { isSolelyOfCompany(Company.CTB, it.companies) }.size
+        val nlbRouteCount = routes.filter { isSolelyOfCompany(Company.NLB, it.companies) }.size
+        val jointRouteCount = routes.filter { it.companies.size > 1 }.size
+        val mappedKmbRouteCount = kmbRouteCount - unmappedKmbRoutes.size
+        val mappedCtbRouteCount = ctbRouteCount - unmappedCtbRoutes.size
+        val mappedNlbRouteCount = nlbRouteCount - unmappedNlbRoutes.size
+
+        println("- KMB routes: $kmbRouteCount (mapped: $mappedKmbRouteCount, unmapped: ${unmappedKmbRoutes.size})")
+        println("- CTB routes: $ctbRouteCount (mapped: $mappedCtbRouteCount, unmapped: ${unmappedCtbRoutes.size})")
+        println("- NLB routes: $nlbRouteCount (mapped: $mappedNlbRouteCount, unmapped: ${unmappedNlbRoutes.size})")
+        println("- Joint routes: $jointRouteCount (mapped: $mappedNlbRouteCount, unmapped: ${unmappedJointRoutes.size})")
         val totalUnmapped =
             unmappedKmbRoutes.size + unmappedCtbRoutes.size + unmappedNlbRoutes.size + unmappedJointRoutes.size
         println("- Total routes: ${routes.size} (mapped: ${routes.size - totalUnmapped}, unmapped: $totalUnmapped)")

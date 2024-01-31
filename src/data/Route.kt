@@ -3,9 +3,10 @@ package data
 import utils.Bound
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
+import utils.Company
 
 data class Route(
-    val companyCode: String,
+    val companies: Set<Company>,
     val number: String,
     val bound: Bound,
     val originEn: String,

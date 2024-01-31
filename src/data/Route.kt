@@ -15,7 +15,7 @@ data class Route(
     val destEn: String,
     val destChiT: String,
     val destChiS: String,
-    @Json(name = "service_type") val kmbServiceType: Int?,
+    val kmbServiceType: Int?,
     val nlbRouteId: String?,
     val pathId: Int?,
     val stops: List<String>,

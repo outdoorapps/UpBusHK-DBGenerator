@@ -9,6 +9,7 @@ import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import utils.Company
 import utils.Paths.Companion.ARCHIVE_EXPORT_PATH
+import utils.Paths.Companion.ARCHIVE_EXPORT_PATH_GZ
 import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
 import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
@@ -22,6 +23,7 @@ import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.math.RoundingMode
 import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import kotlin.time.measureTime
 
 class Analyzer(
@@ -314,9 +316,10 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
     }
 
     execute("Compressing files to archive...") {
-        val output = FileOutputStream(ARCHIVE_EXPORT_PATH)
-        val xzOStream = XZOutputStream(output, LZMA2Options())
-        TarArchiveOutputStream(xzOStream).use {
+        val output =
+            if (compressToXZ) FileOutputStream(ARCHIVE_EXPORT_PATH) else FileOutputStream(ARCHIVE_EXPORT_PATH_GZ)
+        val compressionStream = if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
+        TarArchiveOutputStream(compressionStream).use {
             intermediates.forEach { path ->
                 val file = File(path)
                 FileInputStream(file).use { input ->

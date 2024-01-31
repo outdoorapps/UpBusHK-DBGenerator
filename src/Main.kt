@@ -22,6 +22,7 @@ import kotlin.time.measureTime
 // todo get fare
 // todo MTRB routes
 
+val compressToXZ = true
 suspend fun main() {
     val t = measureTime {
         // I. Build requestable routes and stops

@@ -6,15 +6,14 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.GovStop
 import json_models.GovStopRaw
+import kotlinx.coroutines.coroutineScope
+import okhttp3.internal.wait
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
-import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.OutputStreamWriter
+import java.io.*
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
 import kotlin.math.cos
@@ -134,6 +133,23 @@ class Utils {
                 }
             }
             if (deleteSource) execute("Cleaning up intermediates...") { files.forEach { File(it).delete() } }
+        }
+
+        fun writeToCSV(filePath: String, coords: List<List<Double>>) {
+            val output = FileOutputStream(filePath)
+            output.use {
+                val writer: Writer = OutputStreamWriter(output, Charsets.UTF_8)
+                writer.use { w ->
+                    w.write("WKT,name,description\n\"LINESTRING (")
+                    for (i in coords.indices) {
+                        w.write("${coords[i][1]} ${coords[i][0]}")
+                        if (i != coords.size - 1) {
+                            w.write(", ")
+                        }
+                    }
+                    w.write(")\",Line 1,")
+                }
+            }
         }
     }
 }

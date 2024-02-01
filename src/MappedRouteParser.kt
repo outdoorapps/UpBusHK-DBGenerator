@@ -95,8 +95,8 @@ class MappedRouteParser {
                                         if (writeSeparatePathFiles) {
                                             val out = FileOutputStream("$debugDir${route.routeInfo.objectId}.json")
                                             val simCoords = simplify(multilineToCoords(route.multiLineString))
-                                            val path = Path(route.routeInfo.objectId, simCoords)
-                                            out.use { out.write(path.toJson().toByteArray()) }
+                                            val track = Track(route.routeInfo.objectId, simCoords)
+                                            out.use { out.write(track.toJson().toByteArray()) }
                                             pathsWritten++
                                             pathSizeMap[route.routeInfo] = simCoords.size
                                         } else {
@@ -106,7 +106,7 @@ class MappedRouteParser {
                                             ) {
                                                 val simCoords = simplify(multilineToCoords(route.multiLineString))
                                                 pathFOS.write(
-                                                    Path(route.routeInfo.objectId, simCoords).toJson().toByteArray()
+                                                    Track(route.routeInfo.objectId, simCoords).toJson().toByteArray()
                                                 )
                                                 if (it.hasNext()) pathFOS.write(",".toByteArray())
                                                 pathsWritten++

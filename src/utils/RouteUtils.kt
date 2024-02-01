@@ -39,8 +39,7 @@ class RouteUtils {
                             val kmbCompanyRoutes = mutableListOf<CompanyRoute>()
                             val countDownLatch = CountDownLatch(kmbRoutes.size)
                             kmbRoutes.forEach {
-                                getRouteStopsAsync(
-                                    Company.KMB,
+                                getRouteStopsAsync(Company.KMB,
                                     it.route,
                                     it.bound,
                                     it.serviceType.toInt(),
@@ -52,7 +51,6 @@ class RouteUtils {
                                             Company.KMB,
                                             it.route,
                                             it.bound,
-                                            null,
                                             it.origEn,
                                             it.origTc,
                                             it.origSc,
@@ -60,6 +58,7 @@ class RouteUtils {
                                             it.destTc,
                                             it.destSc,
                                             it.serviceType.toInt(),
+                                            null,
                                             stops
                                         )
                                         CoroutineScope(Dispatchers.IO).launch {
@@ -100,13 +99,13 @@ class RouteUtils {
                                                 Company.CTB,
                                                 it.route,
                                                 bound,
-                                                null,
                                                 if (bound == Bound.O) it.origEn else it.destEn,
                                                 if (bound == Bound.O) it.origTc else it.destTc,
                                                 if (bound == Bound.O) it.origSc else it.destSc,
                                                 if (bound == Bound.O) it.destEn else it.origEn,
                                                 if (bound == Bound.O) it.destTc else it.origTc,
                                                 if (bound == Bound.O) it.destSc else it.origSc,
+                                                null,
                                                 null,
                                                 stops
                                             )
@@ -162,7 +161,6 @@ class RouteUtils {
                                         Company.NLB,
                                         it.routeNo,
                                         bound,
-                                        it.routeId,
                                         originEn,
                                         it.routeNameC.split('>')[0].trim(),
                                         it.routeNameS.split('>')[0].trim(),
@@ -170,6 +168,7 @@ class RouteUtils {
                                         it.routeNameC.split('>')[1].trim(),
                                         it.routeNameS.split('>')[1].trim(),
                                         null,
+                                        it.routeId,
                                         stops
                                     )
                                 )

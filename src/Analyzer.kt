@@ -250,7 +250,7 @@ class Analyzer(
                     it.destChiT,
                     it.destChiS,
                     it.kmbServiceType,
-                    null,
+                    it.routeId,
                     routeInfo?.objectId,
                     it.stops,
                     emptyList()

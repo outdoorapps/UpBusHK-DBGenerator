@@ -38,7 +38,7 @@ class MappedRouteParser {
                     parseGovData(parseRouteInfo, parsePaths, null, pathIDsToWrite, true)
                 } else {
                     FileOutputStream(DB_PATHS_EXPORT_PATH).use {
-                        it.write("{\"paths\":[".toByteArray())
+                        it.write("{\"tracks\":[".toByteArray())
                         parseGovData(parseRouteInfo, parsePaths, it, pathIDsToWrite, false)
                         it.write("]}".toByteArray())
                     }

@@ -304,23 +304,18 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
     }
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
-        writeToJsonFile(
-            RSDatabase(analyzer.routes, requestedData.stops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH
-        )
+        writeToJsonFile(RSDatabase(analyzer.routes, requestedData.stops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
     }
 
     execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
         val pathIDs = mutableSetOf<Int>()
         analyzer.routes.forEach { if (it.pathId != null) pathIDs.add(it.pathId) }
         MappedRouteParser.parseFile(
-            parseRouteInfo = true,
-            parsePaths = true,
-            pathIDsToWrite = pathIDs,
-            writeSeparatePathFiles = true
+            parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )
     }
 
-    writeToArchive(ARCHIVE_NAME, intermediates, compressToXZ = false, deleteSource = true)
+    writeToArchive(ARCHIVE_NAME, intermediates, compressToXZ = true, deleteSource = true)
 }
 
 suspend fun main() {

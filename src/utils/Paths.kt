@@ -1,5 +1,7 @@
 package utils
 
+import java.io.File
+
 class Paths {
     companion object {
         const val BUS_ROUTES_GEOJSON_URL =
@@ -15,5 +17,9 @@ class Paths {
         const val DB_ROUTES_STOPS_EXPORT_PATH = "resources/DB_routes-and-stops.json"
         const val DB_PATHS_EXPORT_PATH = "resources/DB_paths.json"
         const val ARCHIVE_NAME = "UpBusHK-DB"
+
+        val resourcesDir = "resources${File.separator}"
+        val tempDir = "${resourcesDir}temp${File.separator}"
+        val debugDir = "${resourcesDir}debug${File.separator}"
     }
 }

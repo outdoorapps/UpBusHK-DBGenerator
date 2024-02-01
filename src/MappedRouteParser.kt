@@ -4,19 +4,18 @@ import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumb
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import com.programmerare.crsTransformations.coordinate.xy
 import data.*
 import utils.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
 import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
 import utils.Paths.Companion.ROUTE_INFO_EXPORT_PATH
+import utils.Paths.Companion.debugDir
+import utils.RamerDouglasPeucker.Companion.simplify
 import utils.Utils.Companion.execute
-import utils.Utils.Companion.writeToArchive
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.Writer
 import java.math.RoundingMode
-import java.util.*
 import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
@@ -28,50 +27,35 @@ class MappedRouteParser {
     companion object {
         private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
         private val klaxon = Klaxon()
-        private val tempDir = "resources${File.separator}temp${File.separator}"
 
         // pathIDsToWrite: Write all paths if null
         fun parseFile(
-            parseRouteInfo: Boolean,
-            parsePaths: Boolean,
-            pathIDsToWrite: Set<Int>?,
-            writeSeparatePathFiles: Boolean
+            parseRouteInfo: Boolean, parsePaths: Boolean, pathIDsToWrite: Set<Int>?, writeSeparatePathFiles: Boolean
         ) {
-            var routeInfos: List<RouteInfo>
-            val pathOutput = FileOutputStream(DB_PATHS_EXPORT_PATH)
-
             if (parsePaths) {
                 if (writeSeparatePathFiles) {
-                    File(tempDir).mkdir()
-                    routeInfos = readFile(pathOutput, pathIDsToWrite, true)
+                    File(debugDir).mkdir()
+                    parseGovData(parseRouteInfo, parsePaths, null, pathIDsToWrite, true)
                 } else {
-                    pathOutput.use {
-                        pathOutput.write("{\"paths\":[".toByteArray())
-                        routeInfos = readFile(pathOutput, pathIDsToWrite, false)
-                        pathOutput.write("]}".toByteArray())
+                    FileOutputStream(DB_PATHS_EXPORT_PATH).use {
+                        it.write("{\"paths\":[".toByteArray())
+                        parseGovData(parseRouteInfo, parsePaths, it, pathIDsToWrite, false)
+                        it.write("]}".toByteArray())
                     }
                 }
             } else {
-                routeInfos = readFile(null, null, false)
-            }
-
-            if (parseRouteInfo) {
-                val routeInfoOutput = FileOutputStream(ROUTE_INFO_EXPORT_PATH)
-                routeInfoOutput.use {
-                    val writer: Writer = OutputStreamWriter(GZIPOutputStream(it), Charsets.UTF_8)
-                    writer.use { w ->
-                        w.write(Klaxon().toJsonString(routeInfos))
-                    }
-                }
+                parseGovData(parseRouteInfo, parsePaths, null, null, false)
             }
         }
 
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
-        private fun readFile(
-            fos: FileOutputStream?,
+        private fun parseGovData(
+            parseRouteInfo: Boolean,
+            parsePaths: Boolean,
+            pathFOS: FileOutputStream?,
             pathIDsToWrite: Set<Int>?,
             writeSeparatePathFiles: Boolean
-        ): List<RouteInfo> {
+        ) {
             val pathSizeMap = mutableMapOf<RouteInfo, Int>()
             val routeInfos = mutableListOf<RouteInfo>()
             val file = ZipFile(BUS_ROUTES_GEOJSON_PATH)
@@ -105,25 +89,28 @@ class MappedRouteParser {
                             "features" -> it.beginArray {
                                 while (it.hasNext()) {
                                     val time = measureTime {
-                                        val route = getMappedRoute(it, fos == null)
+                                        val route = getMappedRoute(it, !parsePaths)
                                         routeInfos.add(route.routeInfo)
-                                        pathSizeMap[route.routeInfo] = route.multiLineString.size
 
                                         if (writeSeparatePathFiles) {
-                                            val out = FileOutputStream("$tempDir${route.routeInfo.objectId}.json")
-                                            val coords = multilineToCoords(route.multiLineString)
-                                            val path = Path(route.routeInfo.objectId, coords)
+                                            val out = FileOutputStream("$debugDir${route.routeInfo.objectId}.json")
+                                            val simCoords = simplify(multilineToCoords(route.multiLineString))
+                                            val path = Path(route.routeInfo.objectId, simCoords)
                                             out.use { out.write(path.toJson().toByteArray()) }
+                                            pathsWritten++
+                                            pathSizeMap[route.routeInfo] = simCoords.size
                                         } else {
-                                            if (fos != null) {
-                                                if (pathIDsToWrite == null || pathIDsToWrite.contains(route.routeInfo.objectId)) {
-                                                    val coords = multilineToCoords(route.multiLineString)
-                                                    fos.write(
-                                                        Path(route.routeInfo.objectId, coords).toJson().toByteArray()
-                                                    )
-                                                    if (it.hasNext()) fos.write(",".toByteArray())
-                                                    pathsWritten++
-                                                }
+                                            if (pathFOS != null && (pathIDsToWrite == null || pathIDsToWrite.contains(
+                                                    route.routeInfo.objectId
+                                                ))
+                                            ) {
+                                                val simCoords = simplify(multilineToCoords(route.multiLineString))
+                                                pathFOS.write(
+                                                    Path(route.routeInfo.objectId, simCoords).toJson().toByteArray()
+                                                )
+                                                if (it.hasNext()) pathFOS.write(",".toByteArray())
+                                                pathsWritten++
+                                                pathSizeMap[route.routeInfo] = simCoords.size
                                             }
                                         }
                                     }
@@ -137,24 +124,23 @@ class MappedRouteParser {
                     }
                 }
             }
-            if (fos != null) println("- $pathsWritten paths written")
-            println(">1000:${pathSizeMap.values.filter { it > 1000 }.size}")
-            println(">2000:${pathSizeMap.values.filter { it > 2000 }.size}")
-            println(">10000:${pathSizeMap.values.filter { it > 10000 }.size}")
-            println(">50000:${pathSizeMap.values.filter { it > 50000 }.size}")
-
-            val frequencyMap = mutableMapOf<Int, Int>()
-            for (value in pathSizeMap.values.distinct()) {
-                frequencyMap[value] = Collections.frequency(pathSizeMap.values, value)
+            if (pathFOS != null) {
+                println("- $pathsWritten paths written")
+                println(">1000 coordinates:${pathSizeMap.values.filter { it > 1000 }.size}")
+                println(">500 coordinates:${pathSizeMap.values.filter { it > 500 }.size}")
+                println(">100 coordinates:${pathSizeMap.values.filter { it > 100 }.size}")
+                println("Max:${pathSizeMap.values.maxOrNull()}, Min:${pathSizeMap.values.minOrNull()}")
             }
-            val sortedMap = frequencyMap.toSortedMap(compareBy { it })
-            println(sortedMap)
-            writeToArchive(
-                "paths", routeInfos.map { x -> "$tempDir${x.objectId}.json" },
-                compressToXZ = false,
-                deleteSource = false //todo
-            )
-            return routeInfos
+
+            if (parseRouteInfo) {
+                val routeInfoOutput = FileOutputStream(ROUTE_INFO_EXPORT_PATH)
+                routeInfoOutput.use {
+                    val writer: Writer = OutputStreamWriter(GZIPOutputStream(it), Charsets.UTF_8)
+                    writer.use { w ->
+                        w.write(Klaxon().toJsonString(routeInfos))
+                    }
+                }
+            }
         }
 
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
@@ -241,10 +227,8 @@ class MappedRouteParser {
         }
 
         private fun multilineToCoords(multiline: List<CrsCoordinate>) = multiline.map { crsCoordinate ->
-            val lat = crsCoordinate.getLatitude().toBigDecimal()
-                .setScale(5, RoundingMode.HALF_EVEN).toDouble()
-            val long = crsCoordinate.getLongitude().toBigDecimal()
-                .setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            val lat = crsCoordinate.getLatitude().toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            val long = crsCoordinate.getLongitude().toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
             listOf(lat, long)
         }
     }
@@ -253,10 +237,7 @@ class MappedRouteParser {
 fun main() {
     execute("Parsing routeInfo...", true) {
         MappedRouteParser.parseFile(
-            parseRouteInfo = true,
-            parsePaths = true,
-            pathIDsToWrite = null,
-            writeSeparatePathFiles = true
+            parseRouteInfo = true, parsePaths = true, pathIDsToWrite = null, writeSeparatePathFiles = false
         )
     }
 }

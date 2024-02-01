@@ -309,7 +309,7 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
 
     execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
         val pathIDs = mutableSetOf<Int>()
-        analyzer.routes.forEach { if (it.pathId != null) pathIDs.add(it.pathId) }
+        analyzer.routes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
         MappedRouteParser.parseFile(
             parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )

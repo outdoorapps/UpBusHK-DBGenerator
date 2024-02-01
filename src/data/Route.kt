@@ -1,7 +1,6 @@
 package data
 
 import utils.Bound
-import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import utils.Company
 
@@ -17,7 +16,7 @@ data class Route(
     val destChiS: String,
     val kmbServiceType: Int?,
     val nlbRouteId: String?,
-    val pathId: Int?,
+    val trackId: Int?,
     val stops: List<String>,
     val secondaryStops: List<String>
     //val fares: List<Double> decimal Int

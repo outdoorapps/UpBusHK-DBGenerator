@@ -3,13 +3,8 @@ import com.beust.klaxon.Klaxon
 import data.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import org.apache.commons.compress.archivers.tar.TarArchiveEntry
-import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
-import org.tukaani.xz.LZMA2Options
-import org.tukaani.xz.XZOutputStream
 import utils.Company
-import utils.Paths.Companion.ARCHIVE_EXPORT_PATH
-import utils.Paths.Companion.ARCHIVE_EXPORT_PATH_GZ
+import utils.Paths.Companion.ARCHIVE_NAME
 import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
 import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
@@ -19,13 +14,11 @@ import utils.Utils.Companion.execute
 import utils.Utils.Companion.getCompanies
 import utils.Utils.Companion.isSolelyOfCompany
 import utils.Utils.Companion.loadGovRecordStop
+import utils.Utils.Companion.writeToArchive
 import utils.Utils.Companion.writeToJsonFile
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
 import java.math.RoundingMode
 import java.util.zip.GZIPInputStream
-import java.util.zip.GZIPOutputStream
 import kotlin.time.measureTime
 
 class Analyzer(
@@ -319,28 +312,15 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
     execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
         val pathIDs = mutableSetOf<Int>()
         analyzer.routes.forEach { if (it.pathId != null) pathIDs.add(it.pathId) }
-        MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs)
+        MappedRouteParser.parseFile(
+            parseRouteInfo = true,
+            parsePaths = true,
+            pathIDsToWrite = pathIDs,
+            writeSeparatePathFiles = true
+        )
     }
 
-    execute("Compressing files to archive...") {
-        val output =
-            if (compressToXZ) FileOutputStream(ARCHIVE_EXPORT_PATH) else FileOutputStream(ARCHIVE_EXPORT_PATH_GZ)
-        val compressionStream = if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
-        TarArchiveOutputStream(compressionStream).use {
-            intermediates.forEach { path ->
-                val file = File(path)
-                FileInputStream(file).use { input ->
-                    val entry = TarArchiveEntry(file.name)
-                    entry.size = file.length()
-                    it.putArchiveEntry(entry)
-                    input.copyTo(it)
-                    it.closeArchiveEntry()
-                }
-            }
-        }
-    }
-
-    execute("Cleaning up intermediates...") { intermediates.forEach { File(it).delete() } }
+    writeToArchive(ARCHIVE_NAME, intermediates, compressToXZ = false, deleteSource = true)
 }
 
 suspend fun main() {

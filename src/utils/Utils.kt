@@ -6,7 +6,13 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.GovStop
 import json_models.GovStopRaw
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry
+import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import org.tukaani.xz.LZMA2Options
+import org.tukaani.xz.XZOutputStream
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
+import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.util.zip.GZIPOutputStream
@@ -107,5 +113,27 @@ class Utils {
 
         fun isSolelyOfCompany(company: Company, companies: Set<Company>): Boolean =
             companies.size == 1 && companies.contains(company)
+
+        fun writeToArchive(outputName: String, files: List<String>, compressToXZ: Boolean, deleteSource: Boolean) {
+            execute("Compressing files to archive...") {
+                val output =
+                    if (compressToXZ) FileOutputStream("$outputName.tar.xz") else FileOutputStream("$outputName.tar.gz")
+                val compressionStream =
+                    if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
+                TarArchiveOutputStream(compressionStream).use {
+                    files.forEach { path ->
+                        val file = File(path)
+                        FileInputStream(file).use { input ->
+                            val entry = TarArchiveEntry(file.name)
+                            entry.size = file.length()
+                            it.putArchiveEntry(entry)
+                            input.copyTo(it)
+                            it.closeArchiveEntry()
+                        }
+                    }
+                }
+            }
+            if (deleteSource) execute("Cleaning up intermediates...") { files.forEach { File(it).delete() } }
+        }
     }
 }

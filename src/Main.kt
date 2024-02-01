@@ -39,7 +39,12 @@ suspend fun main() {
 
         // III. Parse routeInfo
         execute("Parsing routeInfo...", true) {
-            MappedRouteParser.parseFile(parseRouteInfo = true, parsePaths = false, pathIDsToWrite = null)
+            MappedRouteParser.parseFile(
+                parseRouteInfo = true,
+                parsePaths = false,
+                pathIDsToWrite = null,
+                writeSeparatePathFiles = true
+            )
         }
 
         // IV. Run analyzer (match paths and merge routes)

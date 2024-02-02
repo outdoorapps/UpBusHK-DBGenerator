@@ -173,6 +173,7 @@ class Analyzer(
                 if (isJointRoute(kmbRoute)) unmappedJointRoutes.add(kmbRoute) else unmappedKmbRoutes.add(kmbRoute)
                 setOf(Company.KMB)
             }
+            assert(kmbRoute.stops.size == secondaryStops.size)
             routes.add(
                 Route(
                     companies,

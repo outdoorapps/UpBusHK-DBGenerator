@@ -125,28 +125,31 @@ class Analyzer(
         return result
     }
 
-    private fun getStopMap(refRoute: CompanyRoute, matchingRoute: CompanyRoute): Map<String, String> {
-        val stopMap = mutableMapOf<String, String>()
-        refRoute.stops.forEach { kmbStopId ->
-            val refStop = requestedData.stops.find { x -> x.stopId == kmbStopId }
+    private fun getStopMap(refRoute: CompanyRoute, matchingRoute: CompanyRoute): List<String> {
+        val secondaryStops = mutableListOf<String>()
+        refRoute.stops.forEach { refStopId ->
+            val refStop = requestedData.stops.find { x -> x.stopId == refStopId }
             // Search a sublist of remaining stops
-            val startIndex = if (stopMap.isEmpty()) {
+            val startIndex = if (secondaryStops.isEmpty()) {
                 0
             } else {
-                val index = matchingRoute.stops.indexOf(stopMap.values.last())
+                val index = matchingRoute.stops.indexOf(secondaryStops.last())
                 if (index == matchingRoute.stops.size) index else index + 1
             }
 
-            val ctbStopId = if (refStop != null) {
+            val matchingStopId = if (refStop != null) {
                 getClosestStopID(refStop, matchingRoute.stops.subList(startIndex, matchingRoute.stops.size))
             } else null
-            stopMap[kmbStopId] = ctbStopId ?: ""
+            secondaryStops.add(matchingStopId ?: "")
         }
-        if (stopMap.values.contains("")) {
-            stopMap.filter { (_, matchingStopId) -> matchingStopId == "" }
-                .forEach { (refStopId, _) -> println("Not match for StopID:$refStopId, (${refRoute.number},${refRoute.bound},${refRoute.kmbServiceType})") }
+        if (secondaryStops.contains("")) {
+            for (i in secondaryStops.indices) {
+                if (secondaryStops[i].isEmpty()) {
+                    println("Not match for StopID:${refRoute.stops[i]}, (${refRoute.number},${refRoute.bound},${refRoute.kmbServiceType})")
+                }
+            }
         }
-        return stopMap
+        return secondaryStops
     }
 
     fun analyze() {
@@ -162,7 +165,7 @@ class Analyzer(
                 if (ctbRoute == null) {
                     println("No CTB route matches KMB route: ${kmbRoute.number},Bound:${kmbRoute.bound},service type:${kmbRoute.kmbServiceType}")
                 } else {
-                    secondaryStops.addAll(getStopMap(kmbRoute, ctbRoute).values)
+                    secondaryStops.addAll(getStopMap(kmbRoute, ctbRoute))
                     jointRoutes.add(kmbRoute)
                 }
             }
@@ -173,7 +176,12 @@ class Analyzer(
                 if (isJointRoute(kmbRoute)) unmappedJointRoutes.add(kmbRoute) else unmappedKmbRoutes.add(kmbRoute)
                 setOf(Company.KMB)
             }
-            assert(kmbRoute.stops.size == secondaryStops.size)
+            if (secondaryStops.isNotEmpty() && kmbRoute.stops.size != secondaryStops.size) {
+                println(
+                    "Primary-secondary stops size not equal (${kmbRoute.stops.size}&${secondaryStops.size}):" +
+                            "${kmbRoute.number},${kmbRoute.bound},${kmbRoute.kmbServiceType}"
+                )
+            }
             routes.add(
                 Route(
                     companies,

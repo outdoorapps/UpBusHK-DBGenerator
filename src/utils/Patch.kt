@@ -64,19 +64,19 @@ class Patch {
         }
 
         private fun patchCTBRoutes(routes: MutableList<CompanyRoute>) {
-            val outboundRoute = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.O }
-            val inboundRoute = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.I }
-            routes.remove(outboundRoute)
-            routes.remove(inboundRoute)
+            val route110Out = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.O }
+            val route110In = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.I }
+            routes.remove(route110Out)
+            routes.remove(route110In)
 
-            if (outboundRoute != null && inboundRoute != null) {
-                val outboundStops = outboundRoute.stops.toMutableList()
-                val inboundStops = inboundRoute.stops
+            if (route110Out != null && route110In != null) {
+                val outboundStops = route110Out.stops.toMutableList()
+                val inboundStops = route110In.stops
                 val startIndex = inboundStops.indexOf(outboundStops.last())
 
                 if (startIndex != -1 && startIndex < inboundStops.size) {
                     outboundStops.addAll(inboundStops.subList(startIndex + 1, inboundStops.size))
-                    val newRoute = outboundRoute.copy(stops = outboundStops)
+                    val newRoute = route110Out.copy(stops = outboundStops)
                     routes.add(newRoute)
                 }
             }

@@ -35,16 +35,16 @@ class MappedRouteParser {
             if (parsePaths) {
                 if (writeSeparatePathFiles) {
                     File(debugDir).mkdir()
-                    parseGovData(parseRouteInfo, parsePaths, null, pathIDsToWrite, true)
+                    parseGovData(parseRouteInfo, true, null, pathIDsToWrite, true)
                 } else {
                     FileOutputStream(DB_PATHS_EXPORT_PATH).use {
                         it.write("{\"tracks\":[".toByteArray())
-                        parseGovData(parseRouteInfo, parsePaths, it, pathIDsToWrite, false)
+                        parseGovData(parseRouteInfo, true, it, pathIDsToWrite, false)
                         it.write("]}".toByteArray())
                     }
                 }
             } else {
-                parseGovData(parseRouteInfo, parsePaths, null, null, false)
+                parseGovData(parseRouteInfo, false, null, null, false)
             }
         }
 

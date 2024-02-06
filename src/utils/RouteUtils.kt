@@ -25,7 +25,7 @@ class RouteUtils {
             val companyRoutes = mutableListOf<CompanyRoute>()
             try {
                 val url = when (company) {
-                    Company.KMB -> KMB_ALL_ROUTES
+                    Company.KMB, Company.LWB -> KMB_ALL_ROUTES
                     Company.CTB -> CTB_ALL_ROUTES
                     Company.NLB -> NLB_ALL_ROUTES
                     Company.MTRB -> TODO()
@@ -33,7 +33,7 @@ class RouteUtils {
                 val response = get(url)
 
                 when (company) {
-                    Company.KMB -> {
+                    Company.KMB, Company.LWB -> {
                         val kmbRoutes = KmbRouteResponse.fromJson(response)?.data
                         if (!kmbRoutes.isNullOrEmpty()) {
                             val kmbCompanyRoutes = mutableListOf<CompanyRoute>()
@@ -192,7 +192,7 @@ class RouteUtils {
         ): List<String> {
             val direction = if (bound == Bound.I) "inbound" else "outbound"
             val url = when (company) {
-                Company.KMB -> "$KMB_ROUTE_STOP/$number/$direction/$serviceType"
+                Company.KMB, Company.LWB -> "$KMB_ROUTE_STOP/$number/$direction/$serviceType"
                 Company.CTB -> "$CTB_ROUTE_STOP/$number/$direction"
                 Company.NLB -> "$NLB_ROUTE_STOP$number"
                 Company.MTRB -> TODO()
@@ -200,7 +200,7 @@ class RouteUtils {
             val response = get(url)
             val stops = mutableListOf<String>()
             when (company) {
-                Company.KMB -> {
+                Company.KMB, Company.LWB -> {
                     val routeStops = KmbRouteStopResponse.fromJson(response)?.stops
                     if (!routeStops.isNullOrEmpty()) {
                         stops.addAll(routeStops.map { x -> x.stop })
@@ -237,14 +237,14 @@ class RouteUtils {
         ) {
             val direction = if (bound == Bound.I) "inbound" else "outbound"
             val url = when (company) {
-                Company.KMB -> "$KMB_ROUTE_STOP/$number/$direction/$serviceType"
+                Company.KMB, Company.LWB -> "$KMB_ROUTE_STOP/$number/$direction/$serviceType"
                 Company.CTB -> "$CTB_ROUTE_STOP/$number/$direction"
                 Company.NLB -> "$NLB_ROUTE_STOP/$number"
                 Company.MTRB -> TODO()
             }
             getAsync(url = url, onFailure = onFailure, onResponse = { response ->
                 when (company) {
-                    Company.KMB -> {
+                    Company.KMB, Company.LWB -> {
                         val routeStops = KmbRouteStopResponse.fromJson(response)?.stops
                         if (!routeStops.isNullOrEmpty()) {
                             onResponse(routeStops.map { x -> x.stop })

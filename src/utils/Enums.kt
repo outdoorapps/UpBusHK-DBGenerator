@@ -1,11 +1,12 @@
 package utils
 
 enum class Company(val value: String) {
-    KMB("KMB"), CTB("CTB"), NLB("NLB"), MTRB("MTRB");
+    KMB("KMB"), LWB("LWB"), CTB("CTB"), NLB("NLB"), MTRB("MTRB");
 
     companion object {
         fun fromValue(value: String): Company = when (value) {
-            "KMB", "LWB" -> KMB
+            "KMB" -> KMB
+            "LWB" -> LWB
             "CTB" -> CTB
             "NLB" -> NLB
             "MTRB" -> MTRB

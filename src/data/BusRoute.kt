@@ -4,7 +4,7 @@ import utils.Bound
 import com.beust.klaxon.Klaxon
 import utils.Company
 
-data class Route(
+data class BusRoute(
     val companies: Set<Company>,
     val number: String,
     val bound: Bound,

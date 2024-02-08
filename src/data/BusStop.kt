@@ -3,7 +3,7 @@ package data
 import com.beust.klaxon.Klaxon
 import utils.Company
 
-data class Stop(
+data class BusStop(
     val company: Company,
     val stopId: String,
     val engName: String,

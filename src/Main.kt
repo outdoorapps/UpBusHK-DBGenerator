@@ -22,7 +22,7 @@ import kotlin.time.measureTime
 // todo get fare
 // todo MTRB routes
 
-const val compressToXZ = false
+const val compressToXZ = true
 suspend fun main() {
     val t = measureTime {
         // I. Build requestable routes and stops
@@ -75,17 +75,17 @@ private fun getRequestedData(): RequestedData {
     // 2. Get Stops
     executeWithCount("Getting KMB stops...") {
         val stops = getKmbStops()
-        requestedData.stops.addAll(stops)
+        requestedData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting CTB stops...") {
         val stops = getCtbStops(requestedData.companyRoutes)
-        requestedData.stops.addAll(stops)
+        requestedData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting NLB stops...") {
         val stops = getNlbStops(requestedData.companyRoutes)
-        requestedData.stops.addAll(stops)
+        requestedData.busStops.addAll(stops)
         stops.size
     }
     StopUtils.validateStops(requestedData)
@@ -93,7 +93,7 @@ private fun getRequestedData(): RequestedData {
     // 3. Patch requestables
     execute("Patching requestables...") {
         patchRoutes(requestedData.companyRoutes)
-        patchStops(requestedData.stops)
+        patchStops(requestedData.busStops)
     }
 
     // 4. Write requestables

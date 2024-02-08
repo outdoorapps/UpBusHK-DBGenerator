@@ -1,7 +1,7 @@
 package utils
 
 import data.CompanyRoute
-import data.Stop
+import data.BusStop
 
 class Patch {
     companion object {
@@ -11,13 +11,13 @@ class Patch {
         // "93BA278DCD263EF8" <- belong to obsolete routes A41,I,serviceType=5,6
         private val stopPatchMap = mapOf("B7A9E1A243516288" to "E5421509D8FC00AF")
 
-        fun patchStops(stops: MutableList<Stop>) {
+        fun patchStops(busStops: MutableList<BusStop>) {
             stopPatchMap.forEach { (missingStopId, pairingStopId) ->
                 // Check if the stop ID is truly missing
-                if (!stops.any { stop -> stop.stopId == missingStopId }) {
-                    val pairingStop = stops.find { requestableStop -> requestableStop.stopId == pairingStopId }
-                    if (pairingStop != null) stops.add(
-                        Stop(
+                if (!busStops.any { stop -> stop.stopId == missingStopId }) {
+                    val pairingStop = busStops.find { requestableStop -> requestableStop.stopId == pairingStopId }
+                    if (pairingStop != null) busStops.add(
+                        BusStop(
                             Company.KMB,
                             missingStopId,
                             pairingStop.engName,
@@ -28,7 +28,7 @@ class Patch {
                     )
                 }
             }
-            stops.sortBy { it.stopId }
+            busStops.sortBy { it.stopId }
         }
 
         fun patchRoutes(routes: MutableList<CompanyRoute>) {

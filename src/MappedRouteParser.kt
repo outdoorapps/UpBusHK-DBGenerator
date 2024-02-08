@@ -38,7 +38,7 @@ class MappedRouteParser {
                     parseGovData(parseRouteInfo, true, null, pathIDsToWrite, true)
                 } else {
                     FileOutputStream(DB_PATHS_EXPORT_PATH).use {
-                        it.write("{\"tracks\":[".toByteArray())
+                        it.write("{\"bus_tracks\":[".toByteArray())
                         parseGovData(parseRouteInfo, true, it, pathIDsToWrite, false)
                         it.write("]}".toByteArray())
                     }
@@ -95,8 +95,8 @@ class MappedRouteParser {
                                         if (writeSeparatePathFiles) {
                                             val out = FileOutputStream("$debugDir${route.routeInfo.objectId}.json")
                                             val simCoords = simplify(multilineToCoords(route.multiLineString))
-                                            val track = Track(route.routeInfo.objectId, simCoords)
-                                            out.use { out.write(track.toJson().toByteArray()) }
+                                            val busTrack = BusTrack(route.routeInfo.objectId, simCoords)
+                                            out.use { out.write(busTrack.toJson().toByteArray()) }
                                             pathsWritten++
                                             pathSizeMap[route.routeInfo] = simCoords.size
                                         } else {
@@ -106,7 +106,7 @@ class MappedRouteParser {
                                             ) {
                                                 val simCoords = simplify(multilineToCoords(route.multiLineString))
                                                 pathFOS.write(
-                                                    Track(route.routeInfo.objectId, simCoords).toJson().toByteArray()
+                                                    BusTrack(route.routeInfo.objectId, simCoords).toJson().toByteArray()
                                                 )
                                                 if (it.hasNext()) pathFOS.write(",".toByteArray())
                                                 pathsWritten++

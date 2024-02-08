@@ -38,7 +38,7 @@ class Analyzer(
     private val nlbRequestableRoutes = requestedData.companyRoutes.filter { it.company == Company.NLB }
     private val lwbRouteNumbers: Set<String>
     private val jointRouteNumbers = mutableSetOf<String>()
-    val routes = mutableListOf<Route>()
+    val busRoutes = mutableListOf<BusRoute>()
 
     // For stats
     private val unmappedKmbRoutes = mutableListOf<CompanyRoute>()
@@ -91,10 +91,10 @@ class Analyzer(
     private fun isRouteBoundMatch(
         companyRoute1: CompanyRoute, companyRoute2: CompanyRoute, errorDistance: Double
     ): Boolean {
-        val origin1 = requestedData.stops.find { stop -> stop.stopId == companyRoute1.stops.first() }
-        val dest1 = requestedData.stops.find { stop -> stop.stopId == companyRoute1.stops.last() }
-        val origin2 = requestedData.stops.find { stop -> stop.stopId == companyRoute2.stops.first() }
-        val dest2 = requestedData.stops.find { stop -> stop.stopId == companyRoute2.stops.last() }
+        val origin1 = requestedData.busStops.find { stop -> stop.stopId == companyRoute1.stops.first() }
+        val dest1 = requestedData.busStops.find { stop -> stop.stopId == companyRoute1.stops.last() }
+        val origin2 = requestedData.busStops.find { stop -> stop.stopId == companyRoute2.stops.first() }
+        val dest2 = requestedData.busStops.find { stop -> stop.stopId == companyRoute2.stops.last() }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
             origin1.latLngCoord, origin2.latLngCoord
         ) else Double.MAX_VALUE
@@ -107,8 +107,8 @@ class Analyzer(
     private fun isRouteInfoBoundMatch(
         companyRoute: CompanyRoute, routeInfo: RouteInfo, errorDistance: Double
     ): Boolean {
-        val origin1 = requestedData.stops.find { stop -> stop.stopId == companyRoute.stops.first() }
-        val dest1 = requestedData.stops.find { stop -> stop.stopId == companyRoute.stops.last() }
+        val origin1 = requestedData.busStops.find { stop -> stop.stopId == companyRoute.stops.first() }
+        val dest1 = requestedData.busStops.find { stop -> stop.stopId == companyRoute.stops.last() }
         val origin2 = govStops.find { stop -> stop.stopId == routeInfo.stStopId }
         val dest2 = govStops.find { stop -> stop.stopId == routeInfo.edStopId }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
@@ -120,13 +120,13 @@ class Analyzer(
         return originDistance <= errorDistance && destDistance <= errorDistance
     }
 
-    private fun getClosestStopID(stop: Stop, candidateStopIDs: List<String>): String? {
+    private fun getClosestStopID(busStop: BusStop, candidateStopIDs: List<String>): String? {
         var result: String? = null
         var minDistance = Double.MAX_VALUE
         candidateStopIDs.forEach {
-            val candidateStop = requestedData.stops.find { x -> x.stopId == it }
+            val candidateStop = requestedData.busStops.find { x -> x.stopId == it }
             if (candidateStop != null) {
-                val distance = Utils.distanceInMeters(candidateStop.latLngCoord, stop.latLngCoord)
+                val distance = Utils.distanceInMeters(candidateStop.latLngCoord, busStop.latLngCoord)
                 if (distance < minDistance) {
                     minDistance = distance
                     result = candidateStop.stopId
@@ -139,7 +139,7 @@ class Analyzer(
     private fun getStopMap(refRoute: CompanyRoute, matchingRoute: CompanyRoute): List<String> {
         val secondaryStops = mutableListOf<String>()
         refRoute.stops.forEach { refStopId ->
-            val refStop = requestedData.stops.find { x -> x.stopId == refStopId }
+            val refStop = requestedData.busStops.find { x -> x.stopId == refStopId }
             // Search a sublist of remaining stops
             val startIndex = if (secondaryStops.isEmpty()) {
                 0
@@ -203,8 +203,8 @@ class Analyzer(
                     "Primary-secondary stops size not equal (${kmbLwbRoute.stops.size}&${secondaryStops.size}): ${kmbLwbRoute.number},${kmbLwbRoute.bound},${kmbLwbRoute.kmbServiceType}"
                 )
             }
-            routes.add(
-                Route(
+            busRoutes.add(
+                BusRoute(
                     companies,
                     kmbLwbRoute.number,
                     kmbLwbRoute.bound,
@@ -232,8 +232,8 @@ class Analyzer(
                 unmappedCtbRoutes.add(it)
                 setOf(Company.CTB)
             }
-            routes.add(
-                Route(
+            busRoutes.add(
+                BusRoute(
                     companies,
                     it.number,
                     it.bound,
@@ -261,8 +261,8 @@ class Analyzer(
                 unmappedNlbRoutes.add(it)
                 setOf(Company.NLB)
             }
-            routes.add(
-                Route(
+            busRoutes.add(
+                BusRoute(
                     companies,
                     it.number,
                     it.bound,
@@ -280,11 +280,11 @@ class Analyzer(
                 )
             )
         }
-        val kmbRouteCount = routes.filter { isSolelyOfCompany(Company.KMB, it.companies) }.size
-        val lwbRouteCount = routes.filter { isSolelyOfCompany(Company.LWB, it.companies) }.size
-        val ctbRouteCount = routes.filter { isSolelyOfCompany(Company.CTB, it.companies) }.size
-        val nlbRouteCount = routes.filter { isSolelyOfCompany(Company.NLB, it.companies) }.size
-        val jointRouteCount = routes.filter { it.companies.size > 1 }.size
+        val kmbRouteCount = busRoutes.filter { isSolelyOfCompany(Company.KMB, it.companies) }.size
+        val lwbRouteCount = busRoutes.filter { isSolelyOfCompany(Company.LWB, it.companies) }.size
+        val ctbRouteCount = busRoutes.filter { isSolelyOfCompany(Company.CTB, it.companies) }.size
+        val nlbRouteCount = busRoutes.filter { isSolelyOfCompany(Company.NLB, it.companies) }.size
+        val jointRouteCount = busRoutes.filter { it.companies.size > 1 }.size
         val mappedKmbRouteCount = kmbRouteCount - unmappedKmbRoutes.size
         val mappedLwRouteCount = lwbRouteCount - unmappedLwbRoutes.size
         val mappedCtbRouteCount = ctbRouteCount - unmappedCtbRoutes.size
@@ -297,7 +297,7 @@ class Analyzer(
         println("- Joint routes: $jointRouteCount (mapped: $mappedNlbRouteCount, unmapped: ${unmappedJointRoutes.size})")
         val totalUnmapped =
             unmappedKmbRoutes.size + unmappedCtbRoutes.size + unmappedNlbRoutes.size + unmappedJointRoutes.size
-        println("- Total routes: ${routes.size} (mapped: ${routes.size - totalUnmapped}, unmapped: $totalUnmapped)")
+        println("- Total routes: ${busRoutes.size} (mapped: ${busRoutes.size - totalUnmapped}, unmapped: $totalUnmapped)")
     }
 }
 
@@ -327,28 +327,28 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
     execute("Analyzing...", true) { analyzer.analyze() }
 
     execute("Rounding LatLng...") {
-        val stops = requestedData.stops.map {
+        val stops = requestedData.busStops.map {
             val lat = it.latLngCoord[0].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
             val long = it.latLngCoord[1].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
             it.copy(latLngCoord = mutableListOf(lat, long))
         }
-        requestedData.stops.clear()
-        requestedData.stops.addAll(stops)
+        requestedData.busStops.clear()
+        requestedData.busStops.addAll(stops)
     }
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
-        writeToJsonFile(RSDatabase(analyzer.routes, requestedData.stops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
+        writeToJsonFile(RSDatabase(analyzer.busRoutes, requestedData.busStops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
     }
 
     execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
         val pathIDs = mutableSetOf<Int>()
-        analyzer.routes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
+        analyzer.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
         MappedRouteParser.parseFile(
             parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )
     }
 
-    writeToArchive(ARCHIVE_NAME, intermediates, compressToXZ = true, deleteSource = true)
+    writeToArchive(ARCHIVE_NAME, intermediates, compressToXZ = compressToXZ, deleteSource = true)
 }
 
 suspend fun main() {
@@ -360,7 +360,7 @@ suspend fun main() {
         val data = Klaxon().parse<RequestedData>(jsonString)
         if (data != null) {
             requestedData.companyRoutes.addAll(data.companyRoutes)
-            requestedData.stops.addAll(data.stops)
+            requestedData.busStops.addAll(data.busStops)
         }
     }
     runAnalyzer(requestedData)

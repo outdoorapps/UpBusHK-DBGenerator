@@ -2,7 +2,7 @@ package utils
 
 import data.CompanyRoute
 import data.RequestedData
-import data.Stop
+import data.BusStop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
 import json_models.NlbRouteStopResponse
@@ -21,14 +21,14 @@ class StopUtils {
     companion object {
         private val mutex = Mutex()
 
-        fun getKmbStops(): List<Stop> {
-            val stops = mutableListOf<Stop>()
+        fun getKmbStops(): List<BusStop> {
+            val busStops = mutableListOf<BusStop>()
             try {
                 val response = get(KMB_ALL_STOPS)
                 val kmbStops = KmbStopResponse.fromJson(response)?.data
                 if (!kmbStops.isNullOrEmpty()) {
                     val newStops = kmbStops.map { x ->
-                        Stop(
+                        BusStop(
                             Company.KMB,
                             x.stop,
                             x.nameEn,
@@ -37,18 +37,18 @@ class StopUtils {
                             mutableListOf(x.lat.toDouble(), x.long.toDouble())
                         )
                     }
-                    stops.addAll(newStops.sortedBy { it.stopId })
+                    busStops.addAll(newStops.sortedBy { it.stopId })
                 }
             } catch (e: Exception) {
                 println("Error occurred while getting KMB stops \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
             }
-            return stops
+            return busStops
         }
 
-        fun getCtbStops(companyRoutes: List<CompanyRoute>): List<Stop> {
+        fun getCtbStops(companyRoutes: List<CompanyRoute>): List<BusStop> {
             val ctbRequestableRoutes = companyRoutes.filter { it.company == Company.CTB }
             val ctbStopIDs = mutableListOf<String>()
-            val ctbStops = mutableListOf<Stop>()
+            val ctbStops = mutableListOf<BusStop>()
 
             ctbRequestableRoutes.forEach {
                 it.stops.forEach { stop -> if (!ctbStopIDs.contains(stop)) ctbStopIDs.add(stop) }
@@ -66,7 +66,7 @@ class StopUtils {
                     }, onResponse = fun(responseBody) {
                         val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
                         if (ctbStop?.stop != null) {
-                            val newStop = Stop(
+                            val newStop = BusStop(
                                 Company.CTB,
                                 ctbStop.stop,
                                 ctbStop.nameEn!!,
@@ -99,9 +99,9 @@ class StopUtils {
             return ctbStops
         }
 
-        fun getNlbStops(companyRoutes: List<CompanyRoute>): List<Stop> {
+        fun getNlbStops(companyRoutes: List<CompanyRoute>): List<BusStop> {
             val nlbRoutes = companyRoutes.filter { x -> x.company == Company.NLB }
-            val nlbStops = mutableListOf<Stop>()
+            val nlbStops = mutableListOf<BusStop>()
 
             val countDownLatch = CountDownLatch(nlbRoutes.size)
             nlbRoutes.forEach { requestableRoute ->
@@ -118,7 +118,7 @@ class StopUtils {
                                 nlbStop.forEach {
                                     if (!nlbStops.any { x -> (x.stopId == it.stop) }) {
                                         nlbStops.add(
-                                            Stop(
+                                            BusStop(
                                                 Company.NLB,
                                                 it.stop,
                                                 it.stopNameE,
@@ -147,7 +147,7 @@ class StopUtils {
             val noMatchStops = mutableListOf<String>()
             requestedData.companyRoutes.forEach {
                 it.stops.forEach { stop ->
-                    if (!requestedData.stops.any { requestableStop -> requestableStop.stopId == stop }) {
+                    if (!requestedData.busStops.any { requestableStop -> requestableStop.stopId == stop }) {
                         if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
                     }
                 }

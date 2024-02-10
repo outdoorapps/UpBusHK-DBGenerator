@@ -148,15 +148,16 @@ class RouteUtils {
                                 val destEn = it.routeNameE.split('>')[1].trim()
                                 val bound: Bound = if (result == null) {
                                     Bound.O
-                                } else {
+                                } else {//todo all NLB resolves to O
                                     if (result.originEn == originEn || result.destEn == destEn) {
                                         Bound.O
                                     } else {
                                         Bound.I
                                     }
                                 }
+                                println("$originEn,$destEn,$bound, route number:${it.routeNo}, Result:$result")
                                 val stops = getRouteStops(Company.NLB, it.routeId, null, null)
-                                companyRoutes.add(
+                                nlbCompanyRoutes.add(
                                     CompanyRoute(
                                         Company.NLB,
                                         it.routeNo,
@@ -173,6 +174,7 @@ class RouteUtils {
                                     )
                                 )
                             }
+                            companyRoutes.addAll(nlbCompanyRoutes)
                         }
                     }
 

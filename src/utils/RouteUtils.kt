@@ -155,7 +155,6 @@ class RouteUtils {
                                         Bound.I
                                     }
                                 }
-                                println("$originEn,$destEn,$bound, route number:${it.routeNo}, Result:$result")
                                 val stops = getRouteStops(Company.NLB, it.routeId, null, null)
                                 nlbCompanyRoutes.add(
                                     CompanyRoute(

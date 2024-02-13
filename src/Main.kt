@@ -1,5 +1,6 @@
 import Uploader.Companion.upload
 import data.RequestedData
+import org.apache.log4j.BasicConfigurator
 import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
 import utils.Patch.Companion.patchRoutes
@@ -16,6 +17,7 @@ import utils.StopUtils.Companion.getKmbStops
 import utils.StopUtils.Companion.getNlbStops
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.executeWithCount
+import utils.Utils.Companion.getArchivePath
 import utils.Utils.Companion.writeToGZ
 import java.io.File
 import kotlin.time.measureTime
@@ -26,6 +28,7 @@ import kotlin.time.measureTime
 
 const val compressToXZ = true
 suspend fun main() {
+    BasicConfigurator.configure()
     val t = measureTime {
         // I. Build requestable routes and stops
         val requestedData = getRequestedData()
@@ -53,8 +56,7 @@ suspend fun main() {
         val version = runAnalyzer(requestedData)
 
         // V. Upload to Firebase and marked changes
-        val databaseFile = File("")
-        upload(databaseFile ,version.toString())
+        upload(File(getArchivePath()), version.toString())
     }
     println("Finished all tasks in $t")
 }

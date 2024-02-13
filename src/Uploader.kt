@@ -1,4 +1,5 @@
 import Uploader.Companion.upload
+import com.beust.klaxon.Klaxon
 import com.google.auth.oauth2.GoogleCredentials
 import com.google.cloud.storage.BlobId
 import com.google.cloud.storage.BlobInfo
@@ -7,12 +8,14 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.StorageClient
 import com.google.firebase.database.FirebaseDatabase
+import data.RSDatabase
+import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
+import org.apache.log4j.BasicConfigurator
+import org.tukaani.xz.XZInputStream
 import utils.Utils
 import java.io.File
 import java.io.FileInputStream
 import java.nio.file.Files
-import java.time.LocalDateTime
-import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
 
 
@@ -73,6 +76,23 @@ class Uploader {
 }
 
 fun main() {
-    //BasicConfigurator.configure() //todo too much logs
-    upload(File(Utils.getArchivePath()), LocalDateTime.now(ZoneOffset.UTC).toString())
+    var version: String? = null
+    BasicConfigurator.configure()
+    Utils.execute("Loading RSDatabase...") {
+        val dbFile = File(Utils.getArchivePath())
+        val xzStream = XZInputStream(dbFile.inputStream())
+        TarArchiveInputStream(xzStream).use { tarStream ->
+            tarStream.nextTarEntry
+            val jsonString = tarStream.bufferedReader().use { it.readText() }
+            val data = Klaxon().parse<RSDatabase>(jsonString)
+            version = data?.version
+        }
+    }
+
+    if (version != null) {
+        println("Uploading database version: $version")
+        upload(File(Utils.getArchivePath()), version!!)
+    } else {
+        println("Version is null, not uploading")
+    }
 }

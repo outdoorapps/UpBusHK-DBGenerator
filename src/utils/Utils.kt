@@ -4,15 +4,18 @@ import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
+import compressToXZ
 import data.GovStop
 import json_models.GovStopRaw
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
+import utils.Paths.Companion.ARCHIVE_NAME
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import utils.Paths.Companion.resourcesDir
 import java.io.*
+import java.time.LocalDateTime
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
 import kotlin.math.cos
@@ -111,9 +114,9 @@ class Utils {
         fun isSolelyOfCompany(company: Company, companies: Set<Company>): Boolean =
             companies.size == 1 && companies.contains(company)
 
-        fun writeToArchive(outputName: String, files: List<String>, compressToXZ: Boolean, deleteSource: Boolean) {
+        fun writeToArchive(files: List<String>, compressToXZ: Boolean, deleteSource: Boolean) {
             execute("Compressing files to archive...") {
-                val path = "$resourcesDir$outputName.tar" + if (compressToXZ) ".xz" else ".gz"
+                val path = getArchivePath()
                 val output = FileOutputStream(path)
                 val compressionStream =
                     if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
@@ -149,5 +152,7 @@ class Utils {
                 }
             }
         }
+
+        fun getArchivePath(): String = "$resourcesDir$ARCHIVE_NAME.tar" + if (compressToXZ) ".xz" else ".gz";
     }
 }

@@ -4,7 +4,6 @@ import data.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import utils.Company
-import utils.Paths.Companion.ARCHIVE_NAME
 import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
 import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
@@ -18,6 +17,8 @@ import utils.Utils.Companion.writeToArchive
 import utils.Utils.Companion.writeToJsonFile
 import java.io.File
 import java.math.RoundingMode
+import java.time.LocalDateTime
+import java.time.ZoneOffset
 import java.util.zip.GZIPInputStream
 import kotlin.time.measureTime
 
@@ -301,7 +302,8 @@ class Analyzer(
     }
 }
 
-suspend fun runAnalyzer(requestedData: RequestedData) {
+suspend fun runAnalyzer(requestedData: RequestedData): LocalDateTime {
+
     val govStops = mutableListOf<GovStop>()
     val routeInfos = mutableListOf<RouteInfo>()
 
@@ -324,6 +326,7 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
     println("Mapped Routes:${routeInfos.size}, Requestable routes:${requestedData.companyRoutes.size}, Stops (on government record):${govStops.size}")
 
     val analyzer = Analyzer(requestedData, routeInfos, govStops)
+
     execute("Analyzing...", true) { analyzer.analyze() }
 
     execute("Rounding LatLng...") {
@@ -336,8 +339,12 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
         requestedData.busStops.addAll(stops)
     }
 
+    val version = LocalDateTime.now(ZoneOffset.UTC)
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
-        writeToJsonFile(RSDatabase(analyzer.busRoutes, requestedData.busStops).toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
+        writeToJsonFile(
+            RSDatabase(version.toString(), analyzer.busRoutes, requestedData.busStops).toJson(),
+            DB_ROUTES_STOPS_EXPORT_PATH
+        )
     }
 
     execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
@@ -348,7 +355,8 @@ suspend fun runAnalyzer(requestedData: RequestedData) {
         )
     }
 
-    writeToArchive(ARCHIVE_NAME, intermediates, compressToXZ = compressToXZ, deleteSource = true)
+    writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
+    return version
 }
 
 suspend fun main() {

@@ -148,7 +148,7 @@ class RouteUtils {
                                 val destEn = it.routeNameE.split('>')[1].trim()
                                 val bound: Bound = if (result == null) {
                                     Bound.O
-                                } else {//todo all NLB resolves to O
+                                } else {
                                     if (result.originEn == originEn || result.destEn == destEn) {
                                         Bound.O
                                     } else {

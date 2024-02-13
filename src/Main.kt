@@ -1,3 +1,4 @@
+import Uploader.Companion.upload
 import data.RequestedData
 import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
@@ -16,6 +17,7 @@ import utils.StopUtils.Companion.getNlbStops
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.executeWithCount
 import utils.Utils.Companion.writeToGZ
+import java.io.File
 import kotlin.time.measureTime
 
 // todo log // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
@@ -48,7 +50,11 @@ suspend fun main() {
         }
 
         // IV. Run analyzer (match paths and merge routes)
-        runAnalyzer(requestedData)
+        val version = runAnalyzer(requestedData)
+
+        // V. Upload to Firebase and marked changes
+        val databaseFile = File("")
+        upload(databaseFile ,version.toString())
     }
     println("Finished all tasks in $t")
 }

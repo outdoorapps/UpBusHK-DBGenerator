@@ -17,8 +17,8 @@ import utils.Utils.Companion.writeToArchive
 import utils.Utils.Companion.writeToJsonFile
 import java.io.File
 import java.math.RoundingMode
-import java.time.LocalDateTime
-import java.time.ZoneOffset
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import java.util.zip.GZIPInputStream
 import kotlin.time.measureTime
 
@@ -302,7 +302,7 @@ class Analyzer(
     }
 }
 
-suspend fun runAnalyzer(requestedData: RequestedData): LocalDateTime {
+suspend fun runAnalyzer(requestedData: RequestedData): RSDatabase {
 
     val govStops = mutableListOf<GovStop>()
     val routeInfos = mutableListOf<RouteInfo>()
@@ -339,24 +339,9 @@ suspend fun runAnalyzer(requestedData: RequestedData): LocalDateTime {
         requestedData.busStops.addAll(stops)
     }
 
-    val version = LocalDateTime.now(ZoneOffset.UTC)
-    execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
-        writeToJsonFile(
-            RSDatabase(version.toString(), analyzer.busRoutes, requestedData.busStops).toJson(),
-            DB_ROUTES_STOPS_EXPORT_PATH
-        )
-    }
-
-    execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
-        val pathIDs = mutableSetOf<Int>()
-        analyzer.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
-        MappedRouteParser.parseFile(
-            parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
-        )
-    }
-
-    writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
-    return version
+    //todo
+    val version = Instant.now().truncatedTo(ChronoUnit.SECONDS)
+    return RSDatabase(version.toString(), analyzer.busRoutes, requestedData.busStops)
 }
 
 suspend fun main() {
@@ -371,5 +356,19 @@ suspend fun main() {
             requestedData.busStops.addAll(data.busStops)
         }
     }
-    runAnalyzer(requestedData)
+    val rsDatabase = runAnalyzer(requestedData)
+
+    execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
+        writeToJsonFile(rsDatabase.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
+    }
+
+    execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
+        val pathIDs = mutableSetOf<Int>()
+        rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
+        MappedRouteParser.parseFile(
+            parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
+        )
+    }
+
+    writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
 }

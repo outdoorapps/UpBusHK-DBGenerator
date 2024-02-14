@@ -1,3 +1,4 @@
+import Analyzer.Companion.intermediates
 import Uploader.Companion.upload
 import data.RequestedData
 import org.apache.log4j.BasicConfigurator
@@ -5,6 +6,7 @@ import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
 import utils.Patch.Companion.patchRoutes
 import utils.Patch.Companion.patchStops
+import utils.Paths
 import utils.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
 import utils.Paths.Companion.BUS_ROUTES_GEOJSON_URL
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
@@ -15,6 +17,7 @@ import utils.StopUtils
 import utils.StopUtils.Companion.getCtbStops
 import utils.StopUtils.Companion.getKmbStops
 import utils.StopUtils.Companion.getNlbStops
+import utils.Utils
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.executeWithCount
 import utils.Utils.Companion.getArchivePath
@@ -45,18 +48,29 @@ suspend fun main() {
         // III. Parse routeInfo
         execute("Parsing routeInfo...", true) {
             MappedRouteParser.parseFile(
-                parseRouteInfo = true,
-                parsePaths = false,
-                pathIDsToWrite = null,
-                writeSeparatePathFiles = true
+                parseRouteInfo = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = true
             )
         }
 
         // IV. Run analyzer (match paths and merge routes)
-        val version = runAnalyzer(requestedData)
+        val rsDatabase = runAnalyzer(requestedData)
 
-        // V. Upload to Firebase and marked changes
-        upload(File(getArchivePath()), version.toString())
+        // V. Write to archive
+        execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {
+            Utils.writeToJsonFile(rsDatabase.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
+        }
+
+        execute("Writing paths \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
+            val pathIDs = mutableSetOf<Int>()
+            rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
+            MappedRouteParser.parseFile(
+                parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
+            )
+        }
+        Utils.writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
+
+        // VI. Upload to Firebase and marked changes
+        upload(File(getArchivePath()), rsDatabase.version)
     }
     println("Finished all tasks in $t")
 }

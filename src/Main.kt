@@ -11,6 +11,7 @@ import utils.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
 import utils.Paths.Companion.BUS_ROUTES_GEOJSON_URL
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
+import utils.Paths.Companion.DB_VERSION_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
 import utils.RouteUtils.Companion.getRoutes
 import utils.StopUtils
@@ -23,6 +24,7 @@ import utils.Utils.Companion.executeWithCount
 import utils.Utils.Companion.getArchivePath
 import utils.Utils.Companion.writeToGZ
 import java.io.File
+import java.io.FileOutputStream
 import kotlin.time.measureTime
 
 // todo log // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
@@ -68,6 +70,13 @@ suspend fun main() {
             )
         }
         Utils.writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
+
+        execute("Writing version file \"${DB_VERSION_EXPORT_PATH}\"...") {
+            val out = FileOutputStream(DB_VERSION_EXPORT_PATH)
+            out.use {
+                it.write(rsDatabase.version.toByteArray())
+            }
+        }
 
         // VI. Upload to Firebase and marked changes
         upload(File(getArchivePath()), rsDatabase.version)

@@ -16,6 +16,7 @@ class Paths {
 
         const val DB_ROUTES_STOPS_EXPORT_PATH = "resources/DB_routes-and-stops.json"
         const val DB_PATHS_EXPORT_PATH = "resources/DB_tracks.json"
+        const val DB_VERSION_EXPORT_PATH = "resources/UpBusHK-DB-version.txt"
         const val ARCHIVE_NAME = "UpBusHK-DB"
 
         val resourcesDir = "resources${File.separator}"

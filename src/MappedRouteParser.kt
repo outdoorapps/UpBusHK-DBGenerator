@@ -29,6 +29,7 @@ class MappedRouteParser {
         private val klaxon = Klaxon()
 
         // pathIDsToWrite: Write all paths if null
+        // writeSeparatePathFiles: If true, write one JSON file for each path
         fun parseFile(
             parseRouteInfo: Boolean, parsePaths: Boolean, pathIDsToWrite: Set<Int>?, writeSeparatePathFiles: Boolean
         ) {
@@ -105,12 +106,21 @@ class MappedRouteParser {
                                                 ))
                                             ) {
                                                 val simCoords = simplify(multilineToCoords(route.multiLineString))
-                                                pathFOS.write(
-                                                    BusTrack(route.routeInfo.objectId, simCoords).toJson().toByteArray()
-                                                )
-                                                if (it.hasNext()) pathFOS.write(",".toByteArray())
+                                                val busTrack = BusTrack(route.routeInfo.objectId, simCoords)
+                                                pathFOS.write(busTrack.toJson().toByteArray())
                                                 pathsWritten++
                                                 pathSizeMap[route.routeInfo] = simCoords.size
+
+                                                // Determine whether a "," should be added
+                                                if (pathIDsToWrite == null) {
+                                                    if (it.hasNext()) {
+                                                        pathFOS.write(",".toByteArray())
+                                                    }
+                                                } else if (pathIDsToWrite.contains(route.routeInfo.objectId)) {
+                                                    if (pathsWritten < pathIDsToWrite.size) {
+                                                        pathFOS.write(",".toByteArray())
+                                                    }
+                                                }
                                             }
                                         }
                                     }

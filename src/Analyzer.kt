@@ -340,7 +340,6 @@ suspend fun runAnalyzer(requestedData: RequestedData): RSDatabase {
         requestedData.busStops.addAll(stops)
     }
 
-    //todo
     val version = Instant.now().truncatedTo(ChronoUnit.SECONDS)
     return RSDatabase(version.toString(), analyzer.busRoutes, requestedData.busStops)
 }

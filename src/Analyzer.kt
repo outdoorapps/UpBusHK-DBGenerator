@@ -290,12 +290,13 @@ class Analyzer(
         val mappedLwRouteCount = lwbRouteCount - unmappedLwbRoutes.size
         val mappedCtbRouteCount = ctbRouteCount - unmappedCtbRoutes.size
         val mappedNlbRouteCount = nlbRouteCount - unmappedNlbRoutes.size
+        val mappedJointRouteCount = jointRouteCount - unmappedJointRoutes.size
 
         println("- KMB routes: $kmbRouteCount (mapped: $mappedKmbRouteCount, unmapped: ${unmappedKmbRoutes.size})")
         println("- LWB routes: $lwbRouteCount (mapped: $mappedLwRouteCount, unmapped: ${unmappedLwbRoutes.size})")
         println("- CTB routes: $ctbRouteCount (mapped: $mappedCtbRouteCount, unmapped: ${unmappedCtbRoutes.size})")
         println("- NLB routes: $nlbRouteCount (mapped: $mappedNlbRouteCount, unmapped: ${unmappedNlbRoutes.size})")
-        println("- Joint routes: $jointRouteCount (mapped: $mappedNlbRouteCount, unmapped: ${unmappedJointRoutes.size})")
+        println("- Joint routes: $jointRouteCount (mapped: $mappedJointRouteCount, unmapped: ${unmappedJointRoutes.size})")
         val totalUnmapped =
             unmappedKmbRoutes.size + unmappedCtbRoutes.size + unmappedNlbRoutes.size + unmappedJointRoutes.size
         println("- Total routes: ${busRoutes.size} (mapped: ${busRoutes.size - totalUnmapped}, unmapped: $totalUnmapped)")

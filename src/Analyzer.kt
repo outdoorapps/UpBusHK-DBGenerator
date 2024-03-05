@@ -4,6 +4,7 @@ import data.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import utils.Company
+import utils.Paths
 import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
 import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
@@ -16,6 +17,7 @@ import utils.Utils.Companion.loadGovRecordStop
 import utils.Utils.Companion.writeToArchive
 import utils.Utils.Companion.writeToJsonFile
 import java.io.File
+import java.io.FileOutputStream
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.temporal.ChronoUnit
@@ -371,4 +373,11 @@ suspend fun main() {
     }
 
     writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
+
+    execute("Writing version file \"${Paths.DB_VERSION_EXPORT_PATH}\"...") {
+        val out = FileOutputStream(Paths.DB_VERSION_EXPORT_PATH)
+        out.use {
+            it.write(rsDatabase.version.toByteArray())
+        }
+    }
 }

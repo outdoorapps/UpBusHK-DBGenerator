@@ -208,12 +208,12 @@ class MappedRouteParser {
             return wgs84coordinates
         }
 
-        private fun getCoordinates(reader: JsonReader, ignorePath: Boolean): List<CrsCoordinate> {
+        private fun getCoordinates(reader: JsonReader, ignorePath: Boolean): MutableList<CrsCoordinate> {
             if (ignorePath) {
                 while (reader.hasNext()) {
                     reader.nextArray()
                 }
-                return emptyList()
+                return mutableListOf()
             } else {
                 val hk1980Coordinates = mutableListOf<CrsCoordinate>()
                 while (reader.hasNext()) {

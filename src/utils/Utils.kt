@@ -64,7 +64,7 @@ class Utils {
             println("Finished in $t")
         }
 
-        fun writeToGZ(data: String, path: String) {
+        fun writeToGZ(data: String, path: String) {//todo create folder if not exist
             val output = FileOutputStream(path)
             output.use {
                 val writer = OutputStreamWriter(GZIPOutputStream(it), Charsets.UTF_8)

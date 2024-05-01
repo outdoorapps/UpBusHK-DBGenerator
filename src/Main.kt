@@ -1,6 +1,6 @@
 import Analyzer.Companion.intermediates
 import Uploader.Companion.upload
-import data.RequestedData
+import data.RequestedBusData
 import org.apache.log4j.BasicConfigurator
 import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
@@ -14,11 +14,11 @@ import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import utils.Paths.Companion.DB_VERSION_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
 import utils.Paths.Companion.resourcesDir
-import utils.RouteUtils.Companion.getRoutes
-import utils.StopUtils
-import utils.StopUtils.Companion.getCtbStops
-import utils.StopUtils.Companion.getKmbStops
-import utils.StopUtils.Companion.getNlbStops
+import utils.BusHelper.Companion.getRoutes
+import utils.BusStopHelper
+import utils.BusStopHelper.Companion.getCtbStops
+import utils.BusStopHelper.Companion.getKmbStops
+import utils.BusStopHelper.Companion.getNlbStops
 import utils.Utils
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.executeWithCount
@@ -85,54 +85,54 @@ suspend fun main() {
     println("Finished all tasks in $t")
 }
 
-private fun getRequestedData(): RequestedData {
-    val requestedData = RequestedData()
+private fun getRequestedData(): RequestedBusData {
+    val requestedBusData = RequestedBusData()
     // 1. Get Routes
     executeWithCount("Getting KMB routes...") {
         val routes = getRoutes(Company.KMB)
-        requestedData.companyRoutes.addAll(routes)
+        requestedBusData.remoteBusRoutes.addAll(routes)
         routes.size
     }
     executeWithCount("Getting CTB routes...") {
         val routes = getRoutes(Company.CTB)
-        requestedData.companyRoutes.addAll(routes)
+        requestedBusData.remoteBusRoutes.addAll(routes)
         routes.size
     }
     executeWithCount("Getting NLB routes...") {
         val routes = getRoutes(Company.NLB)
-        requestedData.companyRoutes.addAll(routes)
+        requestedBusData.remoteBusRoutes.addAll(routes)
         routes.size
     }
 
     // 2. Get Stops
     executeWithCount("Getting KMB stops...") {
         val stops = getKmbStops()
-        requestedData.busStops.addAll(stops)
+        requestedBusData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting CTB stops...") {
-        val stops = getCtbStops(requestedData.companyRoutes)
-        requestedData.busStops.addAll(stops)
+        val stops = getCtbStops(requestedBusData.remoteBusRoutes)
+        requestedBusData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting NLB stops...") {
-        val stops = getNlbStops(requestedData.companyRoutes)
-        requestedData.busStops.addAll(stops)
+        val stops = getNlbStops(requestedBusData.remoteBusRoutes)
+        requestedBusData.busStops.addAll(stops)
         stops.size
     }
-    StopUtils.validateStops(requestedData)
+    BusStopHelper.validateStops(requestedBusData)
 
     // 3. Patch requestables
     execute("Patching requestables...") {
-        patchRoutes(requestedData.companyRoutes)
-        patchStops(requestedData.busStops)
+        patchRoutes(requestedBusData.remoteBusRoutes)
+        patchStops(requestedBusData.busStops)
     }
 
     // 4. Write requestables
     execute("Writing requestables \"$REQUESTABLES_EXPORT_PATH\"...") {
         val dir = File(resourcesDir)
         if (!dir.exists()) dir.mkdir()
-        writeToGZ(requestedData.toJson(), REQUESTABLES_EXPORT_PATH)
+        writeToGZ(requestedBusData.toJson(), REQUESTABLES_EXPORT_PATH)
     }
-    return requestedData
+    return requestedBusData
 }

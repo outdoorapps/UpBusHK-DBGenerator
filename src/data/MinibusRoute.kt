@@ -1,12 +1,12 @@
 package data
 
-import utils.Bound
-import utils.Company
-import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
+import utils.Bound
+import utils.Region
 
-data class CompanyRoute(
-    val company: Company,
+data class MiniBusRoute(
+    val routeId: Int,
+    val region: Region,
     val number: String,
     val bound: Bound,
     val originEn: String,
@@ -15,10 +15,8 @@ data class CompanyRoute(
     val destEn: String,
     val destChiT: String,
     val destChiS: String,
-    @Json(name = "service_type")
-    val kmbServiceType: Int?,
-    val routeId: String?,
-    val stops: List<String>
+    val stops: List<Int>
+    //val fares: List<Double> decimal Int
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

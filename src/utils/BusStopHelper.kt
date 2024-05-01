@@ -1,7 +1,7 @@
 package utils
 
-import data.CompanyRoute
-import data.RequestedData
+import data.RemoteBusRoute
+import data.RequestedBusData
 import data.BusStop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -17,7 +17,7 @@ import utils.HttpUtils.Companion.get
 import utils.HttpUtils.Companion.getAsync
 import java.util.concurrent.CountDownLatch
 
-class StopUtils {
+class BusStopHelper {
     companion object {
         private val mutex = Mutex()
 
@@ -45,8 +45,8 @@ class StopUtils {
             return busStops
         }
 
-        fun getCtbStops(companyRoutes: List<CompanyRoute>): List<BusStop> {
-            val ctbRequestableRoutes = companyRoutes.filter { it.company == Company.CTB }
+        fun getCtbStops(remoteBusRoutes: List<RemoteBusRoute>): List<BusStop> {
+            val ctbRequestableRoutes = remoteBusRoutes.filter { it.company == Company.CTB }
             val ctbStopIDs = mutableListOf<String>()
             val ctbStops = mutableListOf<BusStop>()
 
@@ -99,8 +99,8 @@ class StopUtils {
             return ctbStops
         }
 
-        fun getNlbStops(companyRoutes: List<CompanyRoute>): List<BusStop> {
-            val nlbRoutes = companyRoutes.filter { x -> x.company == Company.NLB }
+        fun getNlbStops(remoteBusRoutes: List<RemoteBusRoute>): List<BusStop> {
+            val nlbRoutes = remoteBusRoutes.filter { x -> x.company == Company.NLB }
             val nlbStops = mutableListOf<BusStop>()
 
             val countDownLatch = CountDownLatch(nlbRoutes.size)
@@ -142,12 +142,12 @@ class StopUtils {
             return nlbStops
         }
 
-        fun validateStops(requestedData: RequestedData): List<String> {
+        fun validateStops(requestedBusData: RequestedBusData): List<String> {
             print("Validating stops...")
             val noMatchStops = mutableListOf<String>()
-            requestedData.companyRoutes.forEach {
+            requestedBusData.remoteBusRoutes.forEach {
                 it.stops.forEach { stop ->
-                    if (!requestedData.busStops.any { requestableStop -> requestableStop.stopId == stop }) {
+                    if (!requestedBusData.busStops.any { requestableStop -> requestableStop.stopId == stop }) {
                         if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
                     }
                 }

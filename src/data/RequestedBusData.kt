@@ -4,8 +4,8 @@ import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
 
-data class RequestedData(
-    val companyRoutes: MutableList<CompanyRoute> = mutableListOf(),
+data class RequestedBusData(
+    val remoteBusRoutes: MutableList<RemoteBusRoute> = mutableListOf(),
     @Json(name = "bus_stops")
     val busStops: MutableList<BusStop> = mutableListOf()
 ) {

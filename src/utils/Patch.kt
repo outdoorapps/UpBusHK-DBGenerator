@@ -1,6 +1,6 @@
 package utils
 
-import data.CompanyRoute
+import data.RemoteBusRoute
 import data.BusStop
 
 class Patch {
@@ -31,7 +31,7 @@ class Patch {
             busStops.sortBy { it.stopId }
         }
 
-        fun patchRoutes(routes: MutableList<CompanyRoute>) {
+        fun patchRoutes(routes: MutableList<RemoteBusRoute>) {
             val routes1 = routes.filter { it.company == Company.KMB && it.number == "107" && it.bound == Bound.O }
             routes1.forEach {
                 val newStops = it.stops.toMutableList()
@@ -60,7 +60,7 @@ class Patch {
             )
         }
 
-        private fun patchCTBRoutes(routes: MutableList<CompanyRoute>) {
+        private fun patchCTBRoutes(routes: MutableList<RemoteBusRoute>) {
             val route110Out = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.O }
             val route110In = routes.find { it.company == Company.CTB && it.number == "110" && it.bound == Bound.I }
             routes.remove(route110Out)

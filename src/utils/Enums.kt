@@ -26,3 +26,16 @@ enum class Bound(val value: String) {
         }
     }
 }
+
+enum class Region(val value: String) {
+    HKI("HKI"), KLN("KLN"), NT("NT");
+
+    companion object {
+        fun fromValue(value: String): Region = when (value) {
+            "HKI" -> HKI
+            "KLN" -> KLN
+            "NT" -> NT
+            else -> throw IllegalArgumentException()
+        }
+    }
+}

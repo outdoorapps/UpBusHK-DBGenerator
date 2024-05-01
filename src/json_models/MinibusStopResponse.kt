@@ -25,13 +25,13 @@ data class MinibusStopData (
     val enabled: Boolean,
 
     @Json(name = "remarks_tc")
-    val remarksTc: Any? = null,
+    val remarksTc: String? = null,
 
     @Json(name = "remarks_sc")
-    val remarksSc: Any? = null,
+    val remarksSc: String? = null,
 
     @Json(name = "remarks_en")
-    val remarksEn: Any? = null,
+    val remarksEn: String? = null,
 
     @Json(name = "data_timestamp")
     val dataTimestamp: String

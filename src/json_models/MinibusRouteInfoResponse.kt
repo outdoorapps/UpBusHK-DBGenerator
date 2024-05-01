@@ -68,13 +68,13 @@ data class Direction(
     val destEn: String,
 
     @Json(name = "remarks_tc")
-    val remarksTc: Any? = null,
+    val remarksTc: String? = null,
 
     @Json(name = "remarks_sc")
-    val remarksSc: Any? = null,
+    val remarksSc: String? = null,
 
     @Json(name = "remarks_en")
-    val remarksEn: Any? = null,
+    val remarksEn: String? = null,
 
     val headways: List<Headway>,
 
@@ -97,7 +97,7 @@ data class Headway(
     @Json(name = "end_time")
     val endTime: String,
 
-    val frequency: Int,
+    val frequency: Int? = null,
 
     @Json(name = "frequency_upper")
     val frequencyUpper: Any? = null

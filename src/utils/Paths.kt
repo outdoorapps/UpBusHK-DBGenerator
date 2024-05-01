@@ -16,6 +16,7 @@ class Paths {
 
         const val REQUESTABLES_EXPORT_PATH = "resources/requestables.json.gz"
         const val ROUTE_INFO_EXPORT_PATH = "resources/route_info.json.gz"
+        const val MINIBUS_EXPORT_PATH = "resources/minibus.json.gz"
 
         const val DB_ROUTES_STOPS_EXPORT_PATH = "resources/DB_routes-and-stops.json"
         const val DB_PATHS_EXPORT_PATH = "resources/DB_tracks.json"

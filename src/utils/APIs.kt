@@ -16,5 +16,6 @@ class APIs {
         const val MINIBUS_ROUTE_URL = "https://data.etagmb.gov.hk/route"
         const val MINIBUS_ROUTE_STOP_URL = "https://data.etagmb.gov.hk/route-stop"
         const val MINIBUS_STOP_URL = "https://data.etagmb.gov.hk/stop"
+        const val MINIBUS_STOP_ROUTE_URL = "https://data.etagmb.gov.hk/stop-route"
     }
 }

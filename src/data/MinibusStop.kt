@@ -3,7 +3,7 @@ package data
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-data class MiniBusStop(
+data class MinibusStop(
     @Json(index = 1) val stopId: Int,
     @Json(index = 2) val engName: String,
     @Json(index = 3) val chiTName: String,

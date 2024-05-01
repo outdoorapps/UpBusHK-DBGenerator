@@ -1,0 +1,23 @@
+<component name="libraryTable">
+  <library name="github.houbb.opencc4j" type="repository">
+    <properties maven-id="com.github.houbb:opencc4j:1.8.1" />
+    <CLASSES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/opencc4j/1.8.1/opencc4j-1.8.1.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/heaven/0.2.0/heaven-0.2.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/apiguardian/apiguardian-api/1.0.0/apiguardian-api-1.0.0.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/nlp-common/0.0.5/nlp-common-0.0.5.jar!/" />
+    </CLASSES>
+    <JAVADOC>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/opencc4j/1.8.1/opencc4j-1.8.1-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/heaven/0.2.0/heaven-0.2.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/apiguardian/apiguardian-api/1.0.0/apiguardian-api-1.0.0-javadoc.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/nlp-common/0.0.5/nlp-common-0.0.5-javadoc.jar!/" />
+    </JAVADOC>
+    <SOURCES>
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/opencc4j/1.8.1/opencc4j-1.8.1-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/heaven/0.2.0/heaven-0.2.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/org/apiguardian/apiguardian-api/1.0.0/apiguardian-api-1.0.0-sources.jar!/" />
+      <root url="jar://$MAVEN_REPOSITORY$/com/github/houbb/nlp-common/0.0.5/nlp-common-0.0.5-sources.jar!/" />
+    </SOURCES>
+  </library>
+</component>

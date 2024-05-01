@@ -11,11 +11,11 @@ import utils.Paths.Companion.ROUTE_INFO_EXPORT_PATH
 import utils.Paths.Companion.debugDir
 import utils.RamerDouglasPeucker.Companion.simplify
 import utils.Utils.Companion.execute
+import utils.Utils.Companion.roundLatLng
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.Writer
-import java.math.RoundingMode
 import java.util.stream.Collectors
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
@@ -239,8 +239,8 @@ class MappedRouteParser {
         }
 
         private fun multilineToCoords(multiline: List<CrsCoordinate>) = multiline.map { crsCoordinate ->
-            val lat = crsCoordinate.getLatitude().toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
-            val long = crsCoordinate.getLongitude().toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            val lat = crsCoordinate.getLatitude().roundLatLng()
+            val long = crsCoordinate.getLongitude().roundLatLng()
             listOf(lat, long)
         }
     }

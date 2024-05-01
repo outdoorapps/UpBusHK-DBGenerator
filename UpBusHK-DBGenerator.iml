@@ -25,5 +25,6 @@
     <orderEntry type="library" name="apache.commons.compress" level="project" />
     <orderEntry type="library" name="google.firebase.admin" level="project" />
     <orderEntry type="library" name="slf4j.log4j12" level="project" />
+    <orderEntry type="library" name="github.houbb.opencc4j" level="project" />
   </component>
 </module>

@@ -15,7 +15,7 @@ import utils.Paths.Companion.ARCHIVE_NAME
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import utils.Paths.Companion.resourcesDir
 import java.io.*
-import java.time.LocalDateTime
+import java.math.RoundingMode
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
 import kotlin.math.cos
@@ -153,6 +153,11 @@ class Utils {
             }
         }
 
-        fun getArchivePath(): String = "$resourcesDir$ARCHIVE_NAME.tar" + if (compressToXZ) ".xz" else ".gz";
+        fun getArchivePath(): String = "$resourcesDir$ARCHIVE_NAME.tar" + if (compressToXZ) ".xz" else ".gz"
+
+        fun Double.roundLatLng(): Double = this.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+
+        fun String.trimIdeographicSpace(): String = this.replace("\u3000", "")
+
     }
 }

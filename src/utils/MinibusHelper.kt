@@ -1,12 +1,11 @@
 package utils
 
+import com.beust.klaxon.KlaxonException
+import com.github.houbb.opencc4j.util.ZhConverterUtil
 import data.MiniBusRoute
-import data.MiniBusStop
+import data.MinibusStop
 import data.RequestedMinibusData
-import json_models.MinibusRouteInfoResponse
-import json_models.MinibusRouteResponse
-import json_models.MinibusRouteStopResponse
-import json_models.MinibusStopResponse
+import json_models.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -14,22 +13,27 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import utils.APIs.Companion.MINIBUS_ROUTE_STOP_URL
 import utils.APIs.Companion.MINIBUS_ROUTE_URL
+import utils.APIs.Companion.MINIBUS_STOP_ROUTE_URL
 import utils.APIs.Companion.MINIBUS_STOP_URL
 import utils.HttpUtils.Companion.get
 import utils.HttpUtils.Companion.getAsync
-import utils.MinibusHelper.Companion.fetchRoutesAndStopNames
-import utils.MinibusHelper.Companion.fetchStopCoordinates
+import utils.MinibusHelper.Companion.getRoutes
+import utils.MinibusHelper.Companion.getStops
 import utils.Paths.Companion.MINIBUS_EXPORT_PATH
 import utils.Utils.Companion.execute
+import utils.Utils.Companion.roundLatLng
+import utils.Utils.Companion.trimIdeographicSpace
 import utils.Utils.Companion.writeToGZ
-import java.math.RoundingMode
 import java.util.concurrent.CountDownLatch
 
 class MinibusHelper {
     companion object {
+        private const val TIMEOUT_SECOND = 120L
         private val mutex = Mutex()
+        private val stopIDs = mutableSetOf<Int>()
 
-        fun fetchRoutesAndStopNames(requestedMinibusData: RequestedMinibusData) {
+        fun getRoutes(): List<MiniBusRoute> {
+            val list = mutableListOf<MiniBusRoute>()
             val response = get(MINIBUS_ROUTE_URL)
             val routes = MinibusRouteResponse.fromJson(response)?.data?.routes
 
@@ -51,8 +55,7 @@ class MinibusHelper {
                             routeInfo.directions.forEach { direction ->
                                 val routeStopResponse =
                                     get("$MINIBUS_ROUTE_STOP_URL/${routeInfo.routeID}/${direction.routeSeq}")
-                                val stops =
-                                    MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops //todo need to save stop names, check for name conflict
+                                val stops = MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops
                                 val bound = if (direction.routeSeq == 1) Bound.O else Bound.I  // Can only be1 or 2
 
                                 val newRoute = MiniBusRoute(routeId = routeInfo.routeID,
@@ -69,29 +72,7 @@ class MinibusHelper {
 
                                 CoroutineScope(Dispatchers.IO).launch {
                                     mutex.withLock {
-                                        requestedMinibusData.minibusRoutes.add(newRoute)
-                                        if (!stops.isNullOrEmpty()) {
-                                            stops.forEach { stop ->
-                                                val existingStop =
-                                                    requestedMinibusData.minibusStops.filter { x -> x.stopId == stop.stopID }
-                                                if (existingStop.isEmpty()) {
-                                                    requestedMinibusData.minibusStops.add(
-                                                        MiniBusStop(
-                                                            stopId = stop.stopID,
-                                                            engName = stop.nameEn,
-                                                            chiTName = stop.nameTc,
-                                                            chiSName = stop.nameSc,
-                                                            latLngCoord = listOf()
-                                                        )
-                                                    )
-                                                } else {
-                                                    // todo names are not standardized
-//                                                    if (existingStop[0].chiTName != stop.nameTc) {
-//                                                        println("different name for stopID ${existingStop[0].stopId}, 1:${existingStop[0].chiTName}, 2:${stop.nameTc}")
-//                                                    }
-                                                }
-                                            }
-                                        }
+                                        list.add(newRoute)
                                     }
                                 }
                             }
@@ -109,48 +90,81 @@ class MinibusHelper {
                 }
             }
             countDownLatch.await()
-            requestedMinibusData.minibusRoutes.sortWith(compareBy({ it.number }, { it.bound }, { it.region }))
-            println("Total minibus routes added (inbound & outbound): ${requestedMinibusData.minibusRoutes.size}")
-            println("Total minibus stops: ${requestedMinibusData.minibusStops.size}")
+            list.sortWith(compareBy({ it.number }, { it.bound }, { it.region }))
+            println("Total minibus routes added (inbound & outbound): ${list.size}")
+            return list
         }
 
-        fun fetchStopCoordinates(requestedMinibusData: RequestedMinibusData) {
-            val newSet = mutableSetOf<MiniBusStop>()
-            val totalCount = requestedMinibusData.minibusStops.size
+        fun getStops(stopIDs: Set<Int>): List<MinibusStop> {
+            MinibusHelper.stopIDs.clear()
+            MinibusHelper.stopIDs.addAll(stopIDs)
+            val list = mutableListOf<MinibusStop>()
+
+            do {
+                list.addAll(getStopsAsync())
+                if (MinibusHelper.stopIDs.isNotEmpty()) {
+                    println("${MinibusHelper.stopIDs.size} errors received, waiting for ${TIMEOUT_SECOND}s before restarting requests")
+                    Thread.sleep(TIMEOUT_SECOND * 1000)
+                    println("Restarting...")
+                }
+            } while (MinibusHelper.stopIDs.isNotEmpty())
+            list.sortBy { it.stopId }
+            println("Total minibus stops: ${list.size}")
+            return list
+        }
+
+        private fun getStopsAsync(): List<MinibusStop> {
+            val list = mutableListOf<MinibusStop>()
+            val totalCount = stopIDs.size
             val countDownLatch = CountDownLatch(totalCount)
             val start = System.currentTimeMillis()
 
-            requestedMinibusData.minibusStops.forEach { stop ->
-                getAsync("$MINIBUS_STOP_URL/${stop.stopId}", onFailure = {
+            stopIDs.forEach { stopId ->
+                getAsync("$MINIBUS_STOP_URL/${stopId}", onFailure = {
                     countDownLatch.countDown()
-                    println("Request for minibus stopID $stop failed")
-                }, onResponse = {
-                    val data = MinibusStopResponse.fromJson(it)?.data
-                    val lat = data?.coordinates?.wgs84?.latitude!!.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN)
-                        .toDouble()
-                    val long =
-                        data.coordinates.wgs84.longitude.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
-                    val newStop =
-                        MiniBusStop(stop.stopId, stop.engName, stop.chiTName, stop.chiSName, listOf(lat, long))
-                    CoroutineScope(Dispatchers.IO).launch {
-                        mutex.withLock {
-                            newSet.add(newStop)
+                    // println("Request for minibus stopID $stopId failed")
+                }, onResponse = { minibusStopResponse ->
+                    val data = MinibusStopResponse.fromJson(minibusStopResponse)?.data
+                    val lat = data?.coordinates?.wgs84?.latitude!!.roundLatLng()
+                    val long = data.coordinates.wgs84.longitude.roundLatLng()
+
+                    val response = get("$MINIBUS_STOP_ROUTE_URL/$stopId")
+                    try {
+                        val stopRouteData = MinibusStopRouteResponse.fromJson(response)?.data
+
+                        if (!stopRouteData.isNullOrEmpty()) {
+                            // Remove "\u3000" ideographic space
+                            // Then, choose the name set with the shortest traditional Chinese name
+                            val nameSet = stopRouteData.sortedBy { it.nameTc.trimIdeographicSpace().length }[0]
+                            val nameTc = nameSet.nameTc.trimIdeographicSpace()
+
+                            // Fill missing simplified Chinese names if needed (traditional Chinese & English names are always present)
+                            val nameSc = if (nameSet.nameSc.isEmpty()) ZhConverterUtil.toSimple(nameTc)
+                            else nameSet.nameSc.trimIdeographicSpace()
+
+                            val newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, listOf(lat, long))
+                            CoroutineScope(Dispatchers.IO).launch {
+                                mutex.withLock {
+                                    list.add(newStop)
+                                    stopIDs.remove(stopId)
+                                }
+                            }
                         }
+                    } catch (_: KlaxonException) {
                     }
                     countDownLatch.countDown()
                     CoroutineScope(Dispatchers.IO).launch {
                         mutex.withLock {
                             val finishCount = totalCount - countDownLatch.count.toInt()
-                            if (finishCount % 50 == 0) {
+                            if (finishCount % 100 == 0) {
                                 Utils.printPercentage(finishCount, totalCount, start)
                             }
                         }
                     }
                 })
-
             }
             countDownLatch.await()
-            println("Total minibus stops coordinates fetched: ${requestedMinibusData.minibusStops.size}")
+            return list
         }
     }
 }
@@ -159,13 +173,16 @@ class MinibusHelper {
 fun main() {
     val requestedMinibusData = RequestedMinibusData()
     execute("Getting minibus routes...", printOnNextLine = true) {
-        fetchRoutesAndStopNames(requestedMinibusData)
+        requestedMinibusData.minibusRoutes.addAll(getRoutes())
     }
 
+    val stopIDs = mutableSetOf<Int>()
+    requestedMinibusData.minibusRoutes.forEach {
+        stopIDs.addAll(it.stops)
+    }
     execute("Getting minibus stops coordinates...", printOnNextLine = true) {
-        fetchStopCoordinates(requestedMinibusData)
+        requestedMinibusData.minibusStops.addAll(getStops(stopIDs))
     }
-
     execute("Writing minibus data \"$MINIBUS_EXPORT_PATH\"...") {
         writeToGZ(requestedMinibusData.toJson(), MINIBUS_EXPORT_PATH)
     }

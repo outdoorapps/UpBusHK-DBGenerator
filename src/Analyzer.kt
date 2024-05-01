@@ -14,6 +14,7 @@ import utils.Utils.Companion.execute
 import utils.Utils.Companion.getCompanies
 import utils.Utils.Companion.isSolelyOfCompany
 import utils.Utils.Companion.loadGovRecordStop
+import utils.Utils.Companion.roundLatLng
 import utils.Utils.Companion.writeToArchive
 import utils.Utils.Companion.writeToJsonFile
 import java.io.File
@@ -334,8 +335,8 @@ suspend fun runAnalyzer(requestedBusData: RequestedBusData): RSDatabase {
 
     execute("Rounding LatLng...") {
         val stops = requestedBusData.busStops.map {
-            val lat = it.latLngCoord[0].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
-            val long = it.latLngCoord[1].toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
+            val lat = it.latLngCoord[0].roundLatLng()
+            val long = it.latLngCoord[1].roundLatLng()
             it.copy(latLngCoord = mutableListOf(lat, long))
         }
         requestedBusData.busStops.clear()

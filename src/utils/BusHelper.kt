@@ -112,12 +112,10 @@ class BusHelper {
                                             CoroutineScope(Dispatchers.IO).launch {
                                                 mutex.withLock {
                                                     ctbRemoteBusRoutes.add(newRoute)
-                                                    countDownLatch.countDown()
                                                 }
                                             }
-                                        } else {
-                                            countDownLatch.countDown()
                                         }
+                                        countDownLatch.countDown()
                                         CoroutineScope(Dispatchers.IO).launch {
                                             mutex.withLock {
                                                 val finishCount = totalCount - countDownLatch.count.toInt()

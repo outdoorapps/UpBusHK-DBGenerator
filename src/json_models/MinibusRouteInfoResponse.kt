@@ -3,8 +3,6 @@ package json_models
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-private val klaxon = Klaxon()
-
 data class MinibusRouteInfoResponse(
     val type: String,
     val version: String,
@@ -14,10 +12,10 @@ data class MinibusRouteInfoResponse(
 
     val data: List<Datum>
 ) {
-     fun toJson() = klaxon.toJsonString(this)
+     fun toJson() = Klaxon().toJsonString(this)
 
     companion object {
-         fun fromJson(json: String) = klaxon.parse<MinibusRouteInfoResponse>(json)
+         fun fromJson(json: String) = Klaxon().parse<MinibusRouteInfoResponse>(json)
     }
 }
 

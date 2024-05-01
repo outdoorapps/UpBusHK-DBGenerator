@@ -1,8 +1,7 @@
 package json_models
 
-import com.beust.klaxon.*
-
-private val klaxon = Klaxon()
+import com.beust.klaxon.Json
+import com.beust.klaxon.Klaxon
 
 data class MinibusRouteStopResponse(
     val type: String, val version: String,
@@ -11,10 +10,10 @@ data class MinibusRouteStopResponse(
 
     val data: Data
 ) {
-    public fun toJson() = klaxon.toJsonString(this)
+    public fun toJson() = Klaxon().toJsonString(this)
 
     companion object {
-        public fun fromJson(json: String) = klaxon.parse<MinibusRouteStopResponse>(json)
+        public fun fromJson(json: String) = Klaxon().parse<MinibusRouteStopResponse>(json)
     }
 }
 

@@ -13,6 +13,7 @@ import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import utils.Paths.Companion.DB_VERSION_EXPORT_PATH
 import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
+import utils.Paths.Companion.resourcesDir
 import utils.RouteUtils.Companion.getRoutes
 import utils.StopUtils
 import utils.StopUtils.Companion.getCtbStops
@@ -129,6 +130,8 @@ private fun getRequestedData(): RequestedData {
 
     // 4. Write requestables
     execute("Writing requestables \"$REQUESTABLES_EXPORT_PATH\"...") {
+        val dir = File(resourcesDir)
+        if (!dir.exists()) dir.mkdir()
         writeToGZ(requestedData.toJson(), REQUESTABLES_EXPORT_PATH)
     }
     return requestedData

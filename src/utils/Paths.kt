@@ -8,8 +8,6 @@ class Paths {
             "https://static.csdi.gov.hk/csdi-webpage/download/7faa97a82780505c9673c4ba128fbfed/geojson"
         const val BUS_STOPS_GEOJSON_URL =
             "https://static.csdi.gov.hk/csdi-webpage/download/6a20951f9a1f5c1d981e80d8a45d141c/geojson"
-        const val MINIBUS_ROUTE_URL = "https://data.etagmb.gov.hk/route/"
-        const val MINIBUS_ROUTE_STOP_URL = "https://data.etagmb.gov.hk/route-stop/"
 
         const val BUS_ROUTES_GEOJSON_PATH = "resources/BusRoute_GEOJSON.zip"
         const val BUS_STOPS_GEOJSON_PATH = "resources/CoordinateofBusStopLocation_GEOJSON.zip"

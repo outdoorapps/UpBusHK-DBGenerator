@@ -12,5 +12,9 @@ class APIs {
         const val KMB_ROUTE_STOP = "https://data.etabus.gov.hk/v1/transport/kmb/route-stop"
         const val CTB_ROUTE_STOP = "https://rt.data.gov.hk/v2/transport/citybus/route-stop/ctb"
         const val NLB_ROUTE_STOP = "https://rt.data.gov.hk/v2/transport/nlb/stop.php?action=list&routeId="
+
+        const val MINIBUS_ROUTE_URL = "https://data.etagmb.gov.hk/route"
+        const val MINIBUS_ROUTE_STOP_URL = "https://data.etagmb.gov.hk/route-stop"
+        const val MINIBUS_STOP_URL = "https://data.etagmb.gov.hk/stop"
     }
 }

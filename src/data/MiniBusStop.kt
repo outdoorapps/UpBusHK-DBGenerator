@@ -1,13 +1,14 @@
 package data
 
+import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
 data class MiniBusStop(
-    val stopId: String,
-    val engName: String,
-    val chiTName: String,
-    val chiSName: String,
-    val latLngCoord: List<Double>
+    @Json(index = 1) val stopId: Int,
+    @Json(index = 2) val engName: String,
+    @Json(index = 3) val chiTName: String,
+    @Json(index = 4) val chiSName: String,
+    @Json(index = 5) val latLngCoord: List<Double>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

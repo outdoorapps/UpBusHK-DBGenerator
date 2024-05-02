@@ -21,7 +21,7 @@ import utils.HttpUtils.Companion.getAsync
 import utils.Utils
 import java.util.concurrent.CountDownLatch
 
-class BusHelper {
+class BusRouteHelper {
     companion object {
         private val mutex = Mutex()
         fun getRoutes(company: Company): List<RemoteBusRoute> {

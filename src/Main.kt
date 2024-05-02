@@ -1,6 +1,8 @@
 import Analyzer.Companion.intermediates
 import Uploader.Companion.upload
 import data.RemoteBusData
+import helpers.BusRouteHelper.Companion.getRoutes
+import helpers.BusStopHelper
 import org.apache.log4j.BasicConfigurator
 import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
@@ -14,11 +16,6 @@ import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import utils.Paths.Companion.DB_VERSION_EXPORT_PATH
 import utils.Paths.Companion.REMOTE_DATA_EXPORT_PATH
 import utils.Paths.Companion.resourcesDir
-import helpers.BusHelper.Companion.getRoutes
-import helpers.BusStopHelper
-import helpers.BusStopHelper.Companion.getCtbStops
-import helpers.BusStopHelper.Companion.getKmbStops
-import helpers.BusStopHelper.Companion.getNlbStops
 import utils.Utils
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.executeWithCount
@@ -105,22 +102,23 @@ private fun getRemoteBusData(): RemoteBusData {
     }
 
     // 2. Get Stops
+    val busStopHelper = BusStopHelper()
     executeWithCount("Getting KMB stops...") {
-        val stops = getKmbStops()
+        val stops = busStopHelper.getKmbStops()
         remoteBusData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting CTB stops...") {
-        val stops = getCtbStops(remoteBusData.remoteBusRoutes)
+        val stops = busStopHelper.getCtbStops(remoteBusData.remoteBusRoutes)
         remoteBusData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting NLB stops...") {
-        val stops = getNlbStops(remoteBusData.remoteBusRoutes)
+        val stops = busStopHelper.getNlbStops(remoteBusData.remoteBusRoutes)
         remoteBusData.busStops.addAll(stops)
         stops.size
     }
-    BusStopHelper.validateStops(remoteBusData)
+    busStopHelper.validateStops(remoteBusData)
 
     // 3. Patch remote data locally
     execute("Patching remote data locally...") {

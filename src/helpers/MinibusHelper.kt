@@ -156,9 +156,8 @@ class MinibusHelper {
                         val nameSet = stopRouteData.sortedBy { it.nameTc.trimIdeographicSpace().length }[0]
                         val nameTc = nameSet.nameTc.trimIdeographicSpace()
 
-                        // Fill missing simplified Chinese names if needed (traditional Chinese & English names are always present)
-                        val nameSc = if (nameSet.nameSc.isEmpty()) ZhConverterUtil.toSimple(nameTc)
-                        else nameSet.nameSc.trimIdeographicSpace()
+                        // Always convert because sometimes the server filled it with tradition Chinese or is missing
+                        val nameSc = ZhConverterUtil.toSimple(nameTc)
 
                         val newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, listOf(lat, long))
                         CoroutineScope(Dispatchers.IO).launch {

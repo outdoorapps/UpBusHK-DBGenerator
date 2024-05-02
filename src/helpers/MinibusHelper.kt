@@ -82,10 +82,10 @@ class MinibusHelper {
                                 bound = bound,
                                 originEn = direction.origEn,
                                 originChiT = direction.origTc,
-                                originChiS = direction.origSc,
+                                originChiS = ZhConverterUtil.toSimple(direction.origTc),
                                 destEn = direction.destEn,
                                 destChiT = direction.destTc,
-                                destChiS = direction.destSc,
+                                destChiS = ZhConverterUtil.toSimple(direction.destTc),
                                 stops = if (stops.isNullOrEmpty()) listOf() else stops.map { stop -> stop.stopID })
 
                             CoroutineScope(Dispatchers.IO).launch {

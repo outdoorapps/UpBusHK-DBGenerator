@@ -1,6 +1,6 @@
 import Analyzer.Companion.intermediates
 import Uploader.Companion.upload
-import data.RequestedBusData
+import data.RemoteBusData
 import org.apache.log4j.BasicConfigurator
 import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
@@ -12,13 +12,13 @@ import utils.Paths.Companion.BUS_ROUTES_GEOJSON_URL
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import utils.Paths.Companion.DB_VERSION_EXPORT_PATH
-import utils.Paths.Companion.REQUESTABLES_EXPORT_PATH
+import utils.Paths.Companion.REMOTE_DATA_EXPORT_PATH
 import utils.Paths.Companion.resourcesDir
-import utils.BusHelper.Companion.getRoutes
-import utils.BusStopHelper
-import utils.BusStopHelper.Companion.getCtbStops
-import utils.BusStopHelper.Companion.getKmbStops
-import utils.BusStopHelper.Companion.getNlbStops
+import helpers.BusHelper.Companion.getRoutes
+import helpers.BusStopHelper
+import helpers.BusStopHelper.Companion.getCtbStops
+import helpers.BusStopHelper.Companion.getKmbStops
+import helpers.BusStopHelper.Companion.getNlbStops
 import utils.Utils
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.executeWithCount
@@ -36,8 +36,8 @@ const val compressToXZ = true
 suspend fun main() {
     BasicConfigurator.configure()
     val t = measureTime {
-        // I. Build requestable routes and stops
-        val requestedData = getRequestedData()
+        // I. Build Remote routes and stops
+        val requestedData = getRemoteBusData()
 
         // II. Download routeInfo-path file
         execute("Downloading $BUS_ROUTES_GEOJSON_PATH ...") {
@@ -85,54 +85,54 @@ suspend fun main() {
     println("Finished all tasks in $t")
 }
 
-private fun getRequestedData(): RequestedBusData {
-    val requestedBusData = RequestedBusData()
+private fun getRemoteBusData(): RemoteBusData {
+    val remoteBusData = RemoteBusData()
     // 1. Get Routes
     executeWithCount("Getting KMB routes...") {
         val routes = getRoutes(Company.KMB)
-        requestedBusData.remoteBusRoutes.addAll(routes)
+        remoteBusData.remoteBusRoutes.addAll(routes)
         routes.size
     }
     executeWithCount("Getting CTB routes...") {
         val routes = getRoutes(Company.CTB)
-        requestedBusData.remoteBusRoutes.addAll(routes)
+        remoteBusData.remoteBusRoutes.addAll(routes)
         routes.size
     }
     executeWithCount("Getting NLB routes...") {
         val routes = getRoutes(Company.NLB)
-        requestedBusData.remoteBusRoutes.addAll(routes)
+        remoteBusData.remoteBusRoutes.addAll(routes)
         routes.size
     }
 
     // 2. Get Stops
     executeWithCount("Getting KMB stops...") {
         val stops = getKmbStops()
-        requestedBusData.busStops.addAll(stops)
+        remoteBusData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting CTB stops...") {
-        val stops = getCtbStops(requestedBusData.remoteBusRoutes)
-        requestedBusData.busStops.addAll(stops)
+        val stops = getCtbStops(remoteBusData.remoteBusRoutes)
+        remoteBusData.busStops.addAll(stops)
         stops.size
     }
     executeWithCount("Getting NLB stops...") {
-        val stops = getNlbStops(requestedBusData.remoteBusRoutes)
-        requestedBusData.busStops.addAll(stops)
+        val stops = getNlbStops(remoteBusData.remoteBusRoutes)
+        remoteBusData.busStops.addAll(stops)
         stops.size
     }
-    BusStopHelper.validateStops(requestedBusData)
+    BusStopHelper.validateStops(remoteBusData)
 
-    // 3. Patch requestables
-    execute("Patching requestables...") {
-        patchRoutes(requestedBusData.remoteBusRoutes)
-        patchStops(requestedBusData.busStops)
+    // 3. Patch remote data locally
+    execute("Patching remote data locally...") {
+        patchRoutes(remoteBusData.remoteBusRoutes)
+        patchStops(remoteBusData.busStops)
     }
 
-    // 4. Write requestables
-    execute("Writing requestables \"$REQUESTABLES_EXPORT_PATH\"...") {
+    // 4. Write remote data
+    execute("Writing remote data \"$REMOTE_DATA_EXPORT_PATH\"...") {
         val dir = File(resourcesDir)
         if (!dir.exists()) dir.mkdir()
-        writeToGZ(requestedBusData.toJson(), REQUESTABLES_EXPORT_PATH)
+        writeToGZ(remoteBusData.toJson(), REMOTE_DATA_EXPORT_PATH)
     }
-    return requestedBusData
+    return remoteBusData
 }

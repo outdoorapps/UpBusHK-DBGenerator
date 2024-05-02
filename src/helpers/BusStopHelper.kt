@@ -1,7 +1,7 @@
-package utils
+package helpers
 
 import data.RemoteBusRoute
-import data.RequestedBusData
+import data.RemoteBusData
 import data.BusStop
 import json_models.CtbStopResponse
 import json_models.KmbStopResponse
@@ -11,10 +11,13 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import utils.APIs
 import utils.APIs.Companion.CTB_ALL_STOP
 import utils.APIs.Companion.KMB_ALL_STOPS
+import utils.Company
 import utils.HttpUtils.Companion.get
 import utils.HttpUtils.Companion.getAsync
+import utils.Utils
 import java.util.concurrent.CountDownLatch
 
 class BusStopHelper {
@@ -46,11 +49,11 @@ class BusStopHelper {
         }
 
         fun getCtbStops(remoteBusRoutes: List<RemoteBusRoute>): List<BusStop> {
-            val ctbRequestableRoutes = remoteBusRoutes.filter { it.company == Company.CTB }
+            val ctbRemoteRoutes = remoteBusRoutes.filter { it.company == Company.CTB }
             val ctbStopIDs = mutableListOf<String>()
             val ctbStops = mutableListOf<BusStop>()
 
-            ctbRequestableRoutes.forEach {
+            ctbRemoteRoutes.forEach {
                 it.stops.forEach { stop -> if (!ctbStopIDs.contains(stop)) ctbStopIDs.add(stop) }
             }
             val totalCount = ctbStopIDs.size
@@ -104,8 +107,8 @@ class BusStopHelper {
             val nlbStops = mutableListOf<BusStop>()
 
             val countDownLatch = CountDownLatch(nlbRoutes.size)
-            nlbRoutes.forEach { requestableRoute ->
-                val url = "${APIs.NLB_ROUTE_STOP}${requestableRoute.routeId}"
+            nlbRoutes.forEach { remoteRoute ->
+                val url = "${APIs.NLB_ROUTE_STOP}${remoteRoute.routeId}"
                 getAsync(url, fun(_) {
                     println("Request failed: $url")
                     countDownLatch.countDown()
@@ -142,12 +145,12 @@ class BusStopHelper {
             return nlbStops
         }
 
-        fun validateStops(requestedBusData: RequestedBusData): List<String> {
+        fun validateStops(remoteBusData: RemoteBusData): List<String> {
             print("Validating stops...")
             val noMatchStops = mutableListOf<String>()
-            requestedBusData.remoteBusRoutes.forEach {
+            remoteBusData.remoteBusRoutes.forEach {
                 it.stops.forEach { stop ->
-                    if (!requestedBusData.busStops.any { requestableStop -> requestableStop.stopId == stop }) {
+                    if (!remoteBusData.busStops.any { remoteStop -> remoteStop.stopId == stop }) {
                         if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
                     }
                 }

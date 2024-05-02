@@ -15,7 +15,7 @@ class Patch {
             stopPatchMap.forEach { (missingStopId, pairingStopId) ->
                 // Check if the stop ID is truly missing
                 if (!busStops.any { stop -> stop.stopId == missingStopId }) {
-                    val pairingStop = busStops.find { requestableStop -> requestableStop.stopId == pairingStopId }
+                    val pairingStop = busStops.find { remoteStop -> remoteStop.stopId == pairingStopId }
                     if (pairingStop != null) busStops.add(
                         BusStop(
                             Company.KMB,

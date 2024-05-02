@@ -4,7 +4,7 @@ import com.beust.klaxon.Converter
 import com.beust.klaxon.JsonValue
 import com.beust.klaxon.Klaxon
 
-class KlaxonHelper {
+class KlaxonUtils {
     companion object {
         fun <T> Klaxon.convert(
             k: kotlin.reflect.KClass<*>, fromJson: (JsonValue) -> T, toJson: (T) -> String, isUnion: Boolean = false

@@ -12,7 +12,7 @@ class Paths {
         const val BUS_ROUTES_GEOJSON_PATH = "resources/BusRoute_GEOJSON.zip"
         const val BUS_STOPS_GEOJSON_PATH = "resources/CoordinateofBusStopLocation_GEOJSON.zip"
 
-        const val REQUESTABLES_EXPORT_PATH = "resources/requestables.json.gz"
+        const val REMOTE_DATA_EXPORT_PATH = "resources/remote_data.json.gz"
         const val ROUTE_INFO_EXPORT_PATH = "resources/route_info.json.gz"
         const val MINIBUS_EXPORT_PATH = "resources/minibus.json.gz"
 

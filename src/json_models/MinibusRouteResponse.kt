@@ -2,7 +2,7 @@ package json_models
 
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
-import utils.KlaxonHelper.Companion.convert
+import utils.KlaxonUtils.Companion.convert
 import utils.Region
 
 @Suppress("UNCHECKED_CAST")

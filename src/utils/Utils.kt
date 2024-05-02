@@ -45,7 +45,6 @@ class Utils {
             return distance * 1000
         }
 
-
         fun executeWithCount(description: String, action: () -> Int) {
             print(description)
             println()

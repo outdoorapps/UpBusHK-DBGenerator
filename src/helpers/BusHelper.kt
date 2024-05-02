@@ -1,4 +1,4 @@
-package utils
+package helpers
 
 import data.RemoteBusRoute
 import json_models.*
@@ -14,8 +14,11 @@ import utils.APIs.Companion.KMB_ALL_ROUTES
 import utils.APIs.Companion.KMB_ROUTE_STOP
 import utils.APIs.Companion.NLB_ALL_ROUTES
 import utils.APIs.Companion.NLB_ROUTE_STOP
+import utils.Bound
+import utils.Company
 import utils.HttpUtils.Companion.get
 import utils.HttpUtils.Companion.getAsync
+import utils.Utils
 import java.util.concurrent.CountDownLatch
 
 class BusHelper {
@@ -39,7 +42,8 @@ class BusHelper {
                             val kmbRemoteBusRoutes = mutableListOf<RemoteBusRoute>()
                             val countDownLatch = CountDownLatch(kmbRoutes.size)
                             kmbRoutes.forEach {
-                                getRouteStopsAsync(Company.KMB,
+                                getRouteStopsAsync(
+                                    Company.KMB,
                                     it.route,
                                     it.bound,
                                     it.serviceType.toInt(),

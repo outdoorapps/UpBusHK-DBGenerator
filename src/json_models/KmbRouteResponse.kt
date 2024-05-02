@@ -3,7 +3,7 @@ package json_models
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import utils.Bound
-import utils.KlaxonHelper.Companion.convert
+import utils.KlaxonUtils.Companion.convert
 
 private val klaxon = Klaxon()
     .convert(Bound::class, { Bound.fromValue(it.string!!) }, { "\"${it.value}\"" })

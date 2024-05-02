@@ -5,6 +5,7 @@ import com.github.houbb.opencc4j.util.ZhConverterUtil
 import data.MiniBusRoute
 import data.MinibusData
 import data.MinibusStop
+import getMinibusData
 import json_models.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -18,12 +19,10 @@ import utils.APIs.Companion.MINIBUS_STOP_URL
 import utils.Bound
 import utils.HttpUtils.Companion.get
 import utils.HttpUtils.Companion.getAsync
-import utils.Paths.Companion.MINIBUS_EXPORT_PATH
 import utils.Utils
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.roundLatLng
 import utils.Utils.Companion.trimIdeographicSpace
-import utils.Utils.Companion.writeToGZ
 import java.util.concurrent.CountDownLatch
 
 class MinibusHelper {
@@ -188,8 +187,5 @@ class MinibusHelper {
 }
 
 fun main() {
-    val minibusData = MinibusHelper().getMinibusData()
-    execute("Writing minibus data \"$MINIBUS_EXPORT_PATH\"...") {
-        writeToGZ(minibusData.toJson(), MINIBUS_EXPORT_PATH)
-    }
+    getMinibusData()
 }

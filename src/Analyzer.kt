@@ -307,7 +307,7 @@ class Analyzer(
     }
 }
 
-suspend fun runAnalyzer(remoteBusData: RemoteBusData): RSDatabase {
+suspend fun runAnalyzer(remoteBusData: RemoteBusData): RoutesStopsDatabase {
 
     val govStops = mutableListOf<GovStop>()
     val routeInfos = mutableListOf<RouteInfo>()
@@ -345,7 +345,7 @@ suspend fun runAnalyzer(remoteBusData: RemoteBusData): RSDatabase {
     }
 
     val version = Instant.now().truncatedTo(ChronoUnit.SECONDS)
-    return RSDatabase(version.toString(), analyzer.busRoutes, remoteBusData.busStops)
+    return RoutesStopsDatabase(version.toString(), analyzer.busRoutes, remoteBusData.busStops, emptyList(), emptySet())
 }
 
 suspend fun main() {

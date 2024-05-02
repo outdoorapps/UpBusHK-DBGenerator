@@ -8,7 +8,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.StorageClient
 import com.google.firebase.database.FirebaseDatabase
-import data.RSDatabase
+import data.RoutesStopsDatabase
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.log4j.BasicConfigurator
 import org.tukaani.xz.XZInputStream
@@ -84,7 +84,7 @@ fun main() {
         TarArchiveInputStream(xzStream).use { tarStream ->
             tarStream.nextTarEntry
             val jsonString = tarStream.bufferedReader().use { it.readText() }
-            val data = Klaxon().parse<RSDatabase>(jsonString)
+            val data = Klaxon().parse<RoutesStopsDatabase>(jsonString)
             version = data?.version
         }
     }

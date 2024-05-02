@@ -1,8 +1,11 @@
 import Analyzer.Companion.intermediates
 import Uploader.Companion.upload
+import data.MinibusData
 import data.RemoteBusData
+import data.RoutesStopsDatabase
 import helpers.BusRouteHelper.Companion.getRoutes
 import helpers.BusStopHelper
+import helpers.MinibusHelper
 import org.apache.log4j.BasicConfigurator
 import utils.Company
 import utils.HttpUtils.Companion.downloadIgnoreCertificate
@@ -14,6 +17,7 @@ import utils.Paths.Companion.BUS_ROUTES_GEOJSON_URL
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import utils.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import utils.Paths.Companion.DB_VERSION_EXPORT_PATH
+import utils.Paths.Companion.MINIBUS_EXPORT_PATH
 import utils.Paths.Companion.REMOTE_DATA_EXPORT_PATH
 import utils.Paths.Companion.resourcesDir
 import utils.Utils
@@ -35,6 +39,7 @@ suspend fun main() {
     val t = measureTime {
         // I. Build Remote routes and stops
         val requestedData = getRemoteBusData()
+        val minibusData = getMinibusData()
 
         // II. Download routeInfo-path file
         execute("Downloading $BUS_ROUTES_GEOJSON_PATH ...") {
@@ -53,7 +58,14 @@ suspend fun main() {
         }
 
         // IV. Run analyzer (match paths and merge routes)
-        val rsDatabase = runAnalyzer(requestedData)
+        val busRSDatabase = runAnalyzer(requestedData)
+        val rsDatabase = RoutesStopsDatabase(
+            version = busRSDatabase.version,
+            busRoutes = busRSDatabase.busRoutes,
+            busStops = busRSDatabase.busStops,
+            minibusRoutes = minibusData.minibusRoutes,
+            minibusStops = minibusData.minibusStops
+        )
 
         // V. Write to archive
         execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {
@@ -133,4 +145,16 @@ private fun getRemoteBusData(): RemoteBusData {
         writeToGZ(remoteBusData.toJson(), REMOTE_DATA_EXPORT_PATH)
     }
     return remoteBusData
+}
+
+fun getMinibusData(): MinibusData {
+    lateinit var minibusData: MinibusData
+    execute("Getting minibus data...", printOnNextLine = true) {
+        minibusData = MinibusHelper().getMinibusData()
+    }
+
+    execute("Writing minibus data \"$MINIBUS_EXPORT_PATH\"...") {
+        writeToGZ(minibusData.toJson(), MINIBUS_EXPORT_PATH)
+    }
+    return minibusData
 }

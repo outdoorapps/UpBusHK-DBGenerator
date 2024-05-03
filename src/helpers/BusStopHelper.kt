@@ -60,8 +60,9 @@ class BusStopHelper {
 
         do {
             ctbStops.addAll(getCtbStopsAsync())
-            if (ctbStopIDs.isNotEmpty()) {
-                println("${ctbStopIDs.size} errors received, waiting for ${TIMEOUT_SECOND}s before restarting requests")
+            val size = this.ctbStopIDs.size
+            if (size != 0) {
+                println("$size errors received, waiting for ${TIMEOUT_SECOND}s before restarting...")
                 Thread.sleep(TIMEOUT_SECOND * 1000)
                 println("Restarting...")
             }
@@ -85,8 +86,9 @@ class BusStopHelper {
                     countDownLatch.countDown()
                 }, onResponse = fun(responseBody) {
                     val ctbStop = CtbStopResponse.fromJson(responseBody)?.data
+                    var newStop: BusStop? = null
                     if (ctbStop?.stop != null) {
-                        val newStop = BusStop(
+                        newStop = BusStop(
                             Company.CTB,
                             ctbStop.stop,
                             ctbStop.nameEn!!,
@@ -94,17 +96,19 @@ class BusStopHelper {
                             ctbStop.nameSc!!,
                             mutableListOf(ctbStop.lat!!.toDouble(), ctbStop.long!!.toDouble())
                         )
-                        CoroutineScope(Dispatchers.IO).launch {
-                            mutex.withLock {
+                    }
+                    CoroutineScope(Dispatchers.IO).launch {
+                        mutex.withLock {
+                            if (newStop != null) {
                                 list.add(newStop)
                                 ctbStopIDs.remove(stopId)
                             }
+                            countDownLatch.countDown()
+                            val finishCount = totalCount - countDownLatch.count.toInt()
+                            if (finishCount % 50 == 0) {
+                                Utils.printPercentage(finishCount, totalCount, start)
+                            }
                         }
-                    }
-                    countDownLatch.countDown()
-                    val finishCount = totalCount - countDownLatch.count.toInt()
-                    if (finishCount % 50 == 0) {
-                        Utils.printPercentage(finishCount, totalCount, start)
                     }
                 })
             } catch (e: Exception) {

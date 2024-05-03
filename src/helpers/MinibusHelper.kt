@@ -120,8 +120,9 @@ class MinibusHelper {
 
         do {
             list.addAll(getStopsAsync())
-            if (stopIDs.isNotEmpty()) {
-                println("${this.stopIDs.size} errors received, waiting for ${TIMEOUT_SECOND}s before restarting requests")
+            val size = this.stopIDs.size
+            if (size != 0) {
+                println("$size errors received, waiting for ${TIMEOUT_SECOND}s before restarting...")
                 Thread.sleep(TIMEOUT_SECOND * 1000)
                 println("Restarting...")
             }
@@ -147,6 +148,7 @@ class MinibusHelper {
                 val long = data.coordinates.wgs84.longitude.roundLatLng()
 
                 val response = get("$MINIBUS_STOP_ROUTE_URL/$stopId")
+                var newStop: MinibusStop? = null
                 try {
                     val stopRouteData = MinibusStopRouteResponse.fromJson(response)?.data
 
@@ -158,20 +160,17 @@ class MinibusHelper {
 
                         // Always convert because sometimes the server filled it with tradition Chinese or is missing
                         val nameSc = ZhConverterUtil.toSimple(nameTc)
-
-                        val newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, listOf(lat, long))
-                        CoroutineScope(Dispatchers.IO).launch {
-                            mutex.withLock {
-                                list.add(newStop)
-                                stopIDs.remove(stopId)
-                            }
-                        }
+                        newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, listOf(lat, long))
                     }
                 } catch (_: KlaxonException) {
                 }
-                countDownLatch.countDown()
                 CoroutineScope(Dispatchers.IO).launch {
                     mutex.withLock {
+                        if (newStop != null) {
+                            list.add(newStop)
+                            stopIDs.remove(stopId)
+                        }
+                        countDownLatch.countDown()
                         val finishCount = totalCount - countDownLatch.count.toInt()
                         if (finishCount % 100 == 0) {
                             Utils.printPercentage(finishCount, totalCount, start)

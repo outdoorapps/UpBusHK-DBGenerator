@@ -40,7 +40,7 @@ class MinibusHelper {
             minibusData.minibusRoutes.addAll(getRoutes())
         }
 
-        execute("Getting minibus stops coordinates...", printOnNextLine = true) {
+        execute("Getting minibus stops...", printOnNextLine = true) {
             val stopIDs = mutableSetOf<Int>()
             minibusData.minibusRoutes.forEach {
                 stopIDs.addAll(it.stops)

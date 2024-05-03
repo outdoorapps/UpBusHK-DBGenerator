@@ -179,8 +179,9 @@ class Utils {
         // 6. Trim preceding and trailing whitespace
         fun String.standardizeChiStopName(): String =
             this.trimIdeographicSpace().replace(regex = Regex("[Ａ-Ｚａ-ｚ０-９－]")) { a -> a.value.toHalfWidth() }
-                .replace(Regex("\\s*,\\s*|，"), ",").replace(Regex("近\\s*\\p{IsHan}"), "近")
-                .replace(Regex("近[A-Za-z]{3,}")) { x -> "${x.value[0]} ${x.value.removePrefix("近")}" }//
+                .replace(Regex("\\s*,\\s*|，"), ", ")
+                .replace(Regex("近\\s*\\p{IsHan}")) { a -> a.value.replace(Regex("\\s*"), "") }
+                .replace(Regex("近[A-Za-z]{3,}")) { x -> "${x.value[0]} ${x.value.removePrefix("近")}" }
                 .replace(Regex("\\p{IsHan}\\s*[A-Za-z0-9-]+\\s*\\p{IsHan}")) { x ->
                     x.value.replace(
                         Regex("\\s*"), ""

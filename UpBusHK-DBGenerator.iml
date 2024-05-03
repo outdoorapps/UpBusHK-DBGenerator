@@ -26,5 +26,9 @@
     <orderEntry type="library" name="google.firebase.admin" level="project" />
     <orderEntry type="library" name="slf4j.log4j12" level="project" />
     <orderEntry type="library" name="github.houbb.opencc4j" level="project" />
+    <orderEntry type="library" name="fasterxml.jackson.core.annotations" level="project" />
+    <orderEntry type="library" name="fasterxml.jackson.core.databind" level="project" />
+    <orderEntry type="library" name="fasterxml.jackson.dataformat.xml" level="project" />
+    <orderEntry type="library" name="fasterxml.jackson.module.kotlin" level="project" />
   </component>
 </module>

@@ -41,7 +41,7 @@ suspend fun main() {
         val requestedData = getRemoteBusData()
         val minibusData = getMinibusData()
 
-        // II. Download routeInfo-path file
+        // II. Download trackInfo-path file
         execute("Downloading $BUS_ROUTES_GEOJSON_PATH ...") {
             downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
         }
@@ -51,9 +51,9 @@ suspend fun main() {
         }
 
         // III. Parse routeInfo
-        execute("Parsing routeInfo...", true) {
+        execute("Parsing trackInfo...", true) {
             MappedRouteParser.parseFile(
-                parseRouteInfo = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = true
+                parseTrackInfo = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = true
             )
         }
 
@@ -76,7 +76,7 @@ suspend fun main() {
             val pathIDs = mutableSetOf<Int>()
             rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
             MappedRouteParser.parseFile(
-                parseRouteInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
+                parseTrackInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
             )
         }
         Utils.writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)

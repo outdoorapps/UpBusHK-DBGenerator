@@ -22,7 +22,7 @@ import utils.HttpUtils.Companion.getAsync
 import utils.Utils
 import utils.Utils.Companion.execute
 import utils.Utils.Companion.roundLatLng
-import utils.Utils.Companion.trimIdeographicSpace
+import utils.Utils.Companion.standardizeChiStopName
 import java.util.concurrent.CountDownLatch
 
 class MinibusHelper {
@@ -151,14 +151,12 @@ class MinibusHelper {
                 var newStop: MinibusStop? = null
                 try {
                     val stopRouteData = MinibusStopRouteResponse.fromJson(response)?.data
-
                     if (!stopRouteData.isNullOrEmpty()) {
-                        // Remove "\u3000" ideographic space
-                        // Then, choose the name set with the shortest traditional Chinese name
-                        val nameSet = stopRouteData.sortedBy { it.nameTc.trimIdeographicSpace().length }[0]
-                        val nameTc = nameSet.nameTc.trimIdeographicSpace()
+                        // Choose the name set with the shortest standardize traditional Chinese name
+                        val nameSet = stopRouteData.sortedBy { it.nameTc.standardizeChiStopName().length }[0]
+                        val nameTc = nameSet.nameTc.standardizeChiStopName()
 
-                        // Always convert because sometimes the server filled it with tradition Chinese or is missing
+                        // Always generate simplified Chinese (Server fills it with traditional or is missing)
                         val nameSc = ZhConverterUtil.toSimple(nameTc)
                         newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, listOf(lat, long))
                     }

@@ -158,5 +158,33 @@ class Utils {
 
         fun String.trimIdeographicSpace(): String = this.replace("\u3000", "")
 
+        fun String.toHalfWidth(): String {
+            val halfWidth = StringBuilder()
+            this.map { it.toHalfWidth() }.forEach { halfWidth.append(it) }
+            return halfWidth.toString()
+        }
+
+        private fun Char.toHalfWidth(): Char = if (this.code in 0xff01..0xff5e) {
+            (this.code + 0x20 and 0xFF).toChar()
+        } else {
+            this
+        }
+
+        // Standardize Chinese stop names (Minibus)
+        // 1. Remove ideographic space "\u3000"
+        // 2. fullWidth characters to halfWidth
+        // 3. No whitespace after "近" for Chinese locations (e.g. 近 富豪苑 to 近富豪苑)
+        // 4. Add whitespace after "近" for English locations (e.g. 近One Hennessy to 近 One Hennessy) except 近M+博物館
+        // 5. Remove in-between whitespace (第 5 號 to 第5號)
+        // 6. Trim preceding and trailing whitespace
+        fun String.standardizeChiStopName(): String =
+            this.trimIdeographicSpace().replace(regex = Regex("[Ａ-Ｚａ-ｚ０-９－]")) { a -> a.value.toHalfWidth() }
+                .replace(Regex("\\s*,\\s*|，"), ",").replace(Regex("近\\s*\\p{IsHan}"), "近")
+                .replace(Regex("近[A-Za-z]{3,}")) { x -> "${x.value[0]} ${x.value.removePrefix("近")}" }//
+                .replace(Regex("\\p{IsHan}\\s*[A-Za-z0-9-]+\\s*\\p{IsHan}")) { x ->
+                    x.value.replace(
+                        Regex("\\s*"), ""
+                    )
+                }.trim()
     }
 }

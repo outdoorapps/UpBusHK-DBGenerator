@@ -3,20 +3,20 @@ import com.beust.klaxon.Klaxon
 import data.*
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
-import utils.Company
-import utils.Paths
-import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
-import utils.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
-import utils.Paths.Companion.REMOTE_DATA_EXPORT_PATH
-import utils.Paths.Companion.TRACK_INFO_EXPORT_PATH
-import utils.Utils
-import utils.Utils.Companion.execute
-import utils.Utils.Companion.getCompanies
-import utils.Utils.Companion.isSolelyOfCompany
-import utils.Utils.Companion.loadGovRecordStop
-import utils.Utils.Companion.roundLatLng
-import utils.Utils.Companion.writeToArchive
-import utils.Utils.Companion.writeToJsonFile
+import util.Company
+import util.Paths
+import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
+import util.Paths.Companion.DB_PATHS_EXPORT_PATH
+import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
+import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
+import util.Utils
+import util.Utils.Companion.execute
+import util.Utils.Companion.getCompanies
+import util.Utils.Companion.isSolelyOfCompany
+import util.Utils.Companion.loadGovRecordStop
+import util.Utils.Companion.roundCoordinate
+import util.Utils.Companion.writeToArchive
+import util.Utils.Companion.writeToJsonFile
 import java.io.File
 import java.io.FileOutputStream
 import java.time.Instant
@@ -24,9 +24,8 @@ import java.time.temporal.ChronoUnit
 import java.util.zip.GZIPInputStream
 import kotlin.time.measureTime
 
-// Remote means on server (on government server or bus companies)
 class Analyzer(
-    private val remoteBusData: RemoteBusData,
+    private val companyBusData: CompanyBusData,
     private val trackInfos: MutableList<TrackInfo>,
     private val govStops: MutableList<GovStop>
 ) {
@@ -36,21 +35,21 @@ class Analyzer(
         val intermediates = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
     }
 
-    // LWB remote routes are labeled as KMB routes
-    private val kmbLwbRemoteRoutes = remoteBusData.remoteBusRoutes.filter { it.company == Company.KMB }
-    private val ctbRemoteRoutes = remoteBusData.remoteBusRoutes.filter { it.company == Company.CTB }
-    private val nlbRemoteRoutes = remoteBusData.remoteBusRoutes.filter { it.company == Company.NLB }
+    // LWB BusCompanyRoutes are labeled as KMB routes
+    private val kmbLwbBusCompanyRoutes = companyBusData.companyBusRoutes.filter { it.company == Company.KMB }
+    private val ctbBusCompanyRoutes = companyBusData.companyBusRoutes.filter { it.company == Company.CTB }
+    private val nlbBusCompanyRoutes = companyBusData.companyBusRoutes.filter { it.company == Company.NLB }
     private val lwbRouteNumbers: Set<String>
     private val jointRouteNumbers = mutableSetOf<String>()
     val busRoutes = mutableListOf<BusRoute>()
 
     // For stats
-    private val unmappedKmbRoutes = mutableListOf<RemoteBusRoute>()
-    private val unmappedLwbRoutes = mutableListOf<RemoteBusRoute>()
-    private val unmappedCtbRoutes = mutableListOf<RemoteBusRoute>()
-    private val unmappedNlbRoutes = mutableListOf<RemoteBusRoute>()
-    private val unmappedJointRoutes = mutableListOf<RemoteBusRoute>()
-    private val jointRoutes = mutableListOf<RemoteBusRoute>()
+    private val unmappedKmbRoutes = mutableListOf<CompanyBusRoute>()
+    private val unmappedLwbRoutes = mutableListOf<CompanyBusRoute>()
+    private val unmappedCtbRoutes = mutableListOf<CompanyBusRoute>()
+    private val unmappedNlbRoutes = mutableListOf<CompanyBusRoute>()
+    private val unmappedJointRoutes = mutableListOf<CompanyBusRoute>()
+    private val jointRoutes = mutableListOf<CompanyBusRoute>()
 
     init {
         val lwbRoutesNumbersSet = mutableSetOf<String>()
@@ -65,62 +64,62 @@ class Analyzer(
             }
         }
         lwbRouteNumbers = lwbRoutesNumbersSet
-        val kmb = kmbLwbRemoteRoutes.size - lwbRouteCount
+        val kmb = kmbLwbBusCompanyRoutes.size - lwbRouteCount
         println(
-            "KMB:${kmb}, LWB:${lwbRouteCount}, CTB:${ctbRemoteRoutes.size}, NLB:${nlbRemoteRoutes.size}, Joint (unique route number):${jointRouteNumbers.size}"
+            "KMB:${kmb}, LWB:${lwbRouteCount}, CTB:${ctbBusCompanyRoutes.size}, NLB:${nlbBusCompanyRoutes.size}, Joint (unique route number):${jointRouteNumbers.size}"
         )
     }
 
-    private fun isJointRoute(remoteBusRoute: RemoteBusRoute): Boolean =
-        jointRouteNumbers.contains(remoteBusRoute.number)
+    private fun isJointRoute(companyBusRoute: CompanyBusRoute): Boolean =
+        jointRouteNumbers.contains(companyBusRoute.number)
 
-    private fun getTrackInfoCandidates(remoteBusRoute: RemoteBusRoute): List<TrackInfo> = trackInfos.filter { info ->
-        when (remoteBusRoute.company) {
-            Company.KMB, Company.LWB -> (info.companyCode.contains(remoteBusRoute.company.value) || info.companyCode.contains(
+    private fun getTrackInfoCandidates(companyBusRoute: CompanyBusRoute): List<TrackInfo> = trackInfos.filter { info ->
+        when (companyBusRoute.company) {
+            Company.KMB, Company.LWB -> (info.companyCode.contains(companyBusRoute.company.value) || info.companyCode.contains(
                 Company.LWB.value
-            )) && info.routeNameE == remoteBusRoute.number
+            )) && info.routeNameE == companyBusRoute.number
 
-            Company.CTB, Company.NLB -> info.companyCode.contains(remoteBusRoute.company.value) && info.routeNameE == remoteBusRoute.number
+            Company.CTB, Company.NLB -> info.companyCode.contains(companyBusRoute.company.value) && info.routeNameE == companyBusRoute.number
             Company.MTRB -> TODO()
         }
     }
 
-    private fun getTrackInfo(remoteBusRoute: RemoteBusRoute): TrackInfo? =
-        getTrackInfoCandidates(remoteBusRoute).find { info ->
+    private fun getTrackInfo(companyBusRoute: CompanyBusRoute): TrackInfo? =
+        getTrackInfoCandidates(companyBusRoute).find { info ->
             isTrackInfoBoundMatch(
-                remoteBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS
+                companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS
             )
         }
 
 
     private fun isRouteBoundMatch(
-        remoteBusRoute1: RemoteBusRoute, remoteBusRoute2: RemoteBusRoute, errorDistance: Double
+        companyBusRoute1: CompanyBusRoute, companyBusRoute2: CompanyBusRoute, errorDistance: Double
     ): Boolean {
-        val origin1 = remoteBusData.busStops.find { stop -> stop.stopId == remoteBusRoute1.stops.first() }
-        val dest1 = remoteBusData.busStops.find { stop -> stop.stopId == remoteBusRoute1.stops.last() }
-        val origin2 = remoteBusData.busStops.find { stop -> stop.stopId == remoteBusRoute2.stops.first() }
-        val dest2 = remoteBusData.busStops.find { stop -> stop.stopId == remoteBusRoute2.stops.last() }
+        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute1.stops.first() }
+        val dest1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute1.stops.last() }
+        val origin2 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute2.stops.first() }
+        val dest2 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute2.stops.last() }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
-            origin1.latLngCoord, origin2.latLngCoord
+            origin1.coordinate, origin2.coordinate
         ) else Double.MAX_VALUE
         val destDistance = if (dest1 != null && dest2 != null) Utils.distanceInMeters(
-            dest1.latLngCoord, dest2.latLngCoord
+            dest1.coordinate, dest2.coordinate
         ) else Double.MAX_VALUE
         return originDistance <= errorDistance || destDistance <= errorDistance
     }
 
     private fun isTrackInfoBoundMatch(
-        remoteBusRoute: RemoteBusRoute, trackInfo: TrackInfo, errorDistance: Double
+        companyBusRoute: CompanyBusRoute, trackInfo: TrackInfo, errorDistance: Double
     ): Boolean {
-        val origin1 = remoteBusData.busStops.find { stop -> stop.stopId == remoteBusRoute.stops.first() }
-        val dest1 = remoteBusData.busStops.find { stop -> stop.stopId == remoteBusRoute.stops.last() }
+        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }
+        val dest1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }
         val origin2 = govStops.find { stop -> stop.stopId == trackInfo.stStopId }
         val dest2 = govStops.find { stop -> stop.stopId == trackInfo.edStopId }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
-            origin1.latLngCoord, origin2.latLngCoord
+            origin1.coordinate, origin2.coordinate
         ) else Double.MAX_VALUE
         val destDistance = if (dest1 != null && dest2 != null) Utils.distanceInMeters(
-            dest2.latLngCoord, dest2.latLngCoord
+            dest2.coordinate, dest2.coordinate
         ) else Double.MAX_VALUE
         return originDistance <= errorDistance && destDistance <= errorDistance
     }
@@ -129,9 +128,9 @@ class Analyzer(
         var result: String? = null
         var minDistance = Double.MAX_VALUE
         candidateStopIDs.forEach {
-            val candidateStop = remoteBusData.busStops.find { x -> x.stopId == it }
+            val candidateStop = companyBusData.busStops.find { x -> x.stopId == it }
             if (candidateStop != null) {
-                val distance = Utils.distanceInMeters(candidateStop.latLngCoord, busStop.latLngCoord)
+                val distance = Utils.distanceInMeters(candidateStop.coordinate, busStop.coordinate)
                 if (distance < minDistance) {
                     minDistance = distance
                     result = candidateStop.stopId
@@ -141,10 +140,10 @@ class Analyzer(
         return result
     }
 
-    private fun getStopMap(refRoute: RemoteBusRoute, matchingRoute: RemoteBusRoute): List<String> {
+    private fun getStopMap(refRoute: CompanyBusRoute, matchingRoute: CompanyBusRoute): List<String> {
         val secondaryStops = mutableListOf<String>()
         refRoute.stops.forEach { refStopId ->
-            val refStop = remoteBusData.busStops.find { x -> x.stopId == refStopId }
+            val refStop = companyBusData.busStops.find { x -> x.stopId == refStopId }
             // Search a sublist of remaining stops
             val startIndex = if (secondaryStops.isEmpty()) {
                 0
@@ -170,12 +169,12 @@ class Analyzer(
 
     fun analyze() {
         // Match TrackInfo
-        kmbLwbRemoteRoutes.forEach { kmbLwbRoute ->
+        kmbLwbBusCompanyRoutes.forEach { kmbLwbRoute ->
             // Merge KMB/LWB and CTB routes
             val trackInfo: TrackInfo? = getTrackInfo(kmbLwbRoute)
             val secondaryStops = mutableListOf<String>()
             if (isJointRoute(kmbLwbRoute)) {
-                val ctbRoute = ctbRemoteRoutes.find { x ->
+                val ctbRoute = ctbBusCompanyRoutes.find { x ->
                     x.number == kmbLwbRoute.number && isRouteBoundMatch(
                         x, kmbLwbRoute, JOINT_ROUTE_ERROR_DISTANCE_METERS
                     )
@@ -228,7 +227,7 @@ class Analyzer(
             )
         }
 
-        ctbRemoteRoutes.filter { !isJointRoute(it) }.forEach {
+        ctbBusCompanyRoutes.filter { !isJointRoute(it) }.forEach {
             val trackInfo: TrackInfo? = getTrackInfo(it)
             val companies = if (trackInfo != null) {
                 trackInfos.remove(trackInfo)
@@ -257,7 +256,7 @@ class Analyzer(
             )
         }
 
-        nlbRemoteRoutes.forEach {
+        nlbBusCompanyRoutes.forEach {
             val trackInfo: TrackInfo? = getTrackInfo(it)
             val companies = if (trackInfo != null) {
                 trackInfos.remove(trackInfo)
@@ -307,7 +306,7 @@ class Analyzer(
     }
 }
 
-suspend fun runAnalyzer(remoteBusData: RemoteBusData): RoutesStopsDatabase {
+suspend fun runAnalyzer(companyBusData: CompanyBusData): RoutesStopsDatabase {
 
     val govStops = mutableListOf<GovStop>()
     val trackInfos = mutableListOf<TrackInfo>()
@@ -318,9 +317,12 @@ suspend fun runAnalyzer(remoteBusData: RemoteBusData): RoutesStopsDatabase {
             launch {
                 val klaxon = Klaxon()
                 val file = File(TRACK_INFO_EXPORT_PATH)
-                val stream = GZIPInputStream(file.inputStream())
-                val jsonString = stream.bufferedReader().use { it.readText() }
-                trackInfos.addAll(klaxon.parseArray<TrackInfo>(jsonString)!!.toList())
+                file.inputStream().use { input ->
+                    GZIPInputStream(input).use { gzInput ->
+                        val jsonString = gzInput.bufferedReader().use { it.readText() }
+                        trackInfos.addAll(klaxon.parseArray<TrackInfo>(jsonString)!!.toList())
+                    }
+                }
             }
             launch {
                 govStops.addAll(loadGovRecordStop())
@@ -328,39 +330,43 @@ suspend fun runAnalyzer(remoteBusData: RemoteBusData): RoutesStopsDatabase {
         }
     }
     println("Finished in $t")
-    println("Mapped Routes:${trackInfos.size}, Remote routes:${remoteBusData.remoteBusRoutes.size}, Stops (on government record):${govStops.size}")
+    println("Mapped Routes:${trackInfos.size}, Bus company routes:${companyBusData.companyBusRoutes.size}, Stops (on government record):${govStops.size}")
 
-    val analyzer = Analyzer(remoteBusData, trackInfos, govStops)
+    val analyzer = Analyzer(companyBusData, trackInfos, govStops)
 
     execute("Analyzing...", true) { analyzer.analyze() }
 
-    execute("Rounding LatLng...") {
-        val stops = remoteBusData.busStops.map {
-            val lat = it.latLngCoord[0].roundLatLng()
-            val long = it.latLngCoord[1].roundLatLng()
-            it.copy(latLngCoord = mutableListOf(lat, long))
+    execute("Rounding coordinate...") {
+        val stops = companyBusData.busStops.map {
+            val lat = it.coordinate[0].roundCoordinate()
+            val long = it.coordinate[1].roundCoordinate()
+            it.copy(coordinate = mutableListOf(lat, long))
         }
-        remoteBusData.busStops.clear()
-        remoteBusData.busStops.addAll(stops)
+        companyBusData.busStops.clear()
+        companyBusData.busStops.addAll(stops)
     }
 
     val version = Instant.now().truncatedTo(ChronoUnit.SECONDS)
-    return RoutesStopsDatabase(version.toString(), analyzer.busRoutes, remoteBusData.busStops, emptyList(), emptySet())
+    return RoutesStopsDatabase(version.toString(), analyzer.busRoutes, companyBusData.busStops, emptyList(), emptySet())
 }
 
 suspend fun main() {
-    val remoteBusData = RemoteBusData()
-    execute("Loading saved requested data...") {
-        val dbFile = File(REMOTE_DATA_EXPORT_PATH)
-        val dbStream = GZIPInputStream(dbFile.inputStream())
-        val jsonString = dbStream.bufferedReader().use { it.readText() }
-        val data = Klaxon().parse<RemoteBusData>(jsonString)
+    val companyBusData = CompanyBusData()
+    execute("Loading saved bus company data...") {
+        val dbFile = File(BUS_COMPANY_DATA_EXPORT_PATH)
+        var jsonString: String
+        dbFile.inputStream().use { input ->
+            GZIPInputStream(input).use { gzInput ->
+                jsonString = gzInput.bufferedReader().use { it.readText() }
+            }
+        }
+        val data = Klaxon().parse<CompanyBusData>(jsonString)
         if (data != null) {
-            remoteBusData.remoteBusRoutes.addAll(data.remoteBusRoutes)
-            remoteBusData.busStops.addAll(data.busStops)
+            companyBusData.companyBusRoutes.addAll(data.companyBusRoutes)
+            companyBusData.busStops.addAll(data.busStops)
         }
     }
-    val rsDatabase = runAnalyzer(remoteBusData)
+    val rsDatabase = runAnalyzer(companyBusData)
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
         writeToJsonFile(rsDatabase.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)
@@ -370,7 +376,7 @@ suspend fun main() {
         val pathIDs = mutableSetOf<Int>()
         rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
         MappedRouteParser.parseFile(
-            parseTrackInfo = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
+            exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )
     }
 

@@ -5,13 +5,13 @@ import com.programmerare.crsTransformations.compositeTransformations.CrsTransfor
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import data.*
-import utils.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
-import utils.Paths.Companion.DB_PATHS_EXPORT_PATH
-import utils.Paths.Companion.TRACK_INFO_EXPORT_PATH
-import utils.Paths.Companion.debugDir
-import utils.RamerDouglasPeucker.Companion.simplify
-import utils.Utils.Companion.execute
-import utils.Utils.Companion.roundLatLng
+import util.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
+import util.Paths.Companion.DB_PATHS_EXPORT_PATH
+import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
+import util.Paths.Companion.debugDir
+import util.RamerDouglasPeucker.Companion.simplify
+import util.Utils.Companion.execute
+import util.Utils.Companion.roundCoordinate
 import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
@@ -31,26 +31,29 @@ class MappedRouteParser {
         // pathIDsToWrite: Write all paths if null
         // writeSeparatePathFiles: If true, write one JSON file for each path
         fun parseFile(
-            parseTrackInfo: Boolean, parsePaths: Boolean, pathIDsToWrite: Set<Int>?, writeSeparatePathFiles: Boolean
+            exportTrackInfoToFile: Boolean,
+            parsePaths: Boolean,
+            pathIDsToWrite: Set<Int>?,
+            writeSeparatePathFiles: Boolean
         ) {
             if (parsePaths) {
                 if (writeSeparatePathFiles) {
                     File(debugDir).mkdir()
-                    parseGovData(parseTrackInfo, true, null, pathIDsToWrite, true)
+                    parseGovTrackData(exportTrackInfoToFile, true, null, pathIDsToWrite, true)
                 } else {
                     FileOutputStream(DB_PATHS_EXPORT_PATH).use {
                         it.write("{\"bus_tracks\":[".toByteArray())
-                        parseGovData(parseTrackInfo, true, it, pathIDsToWrite, false)
+                        parseGovTrackData(exportTrackInfoToFile, true, it, pathIDsToWrite, false)
                         it.write("]}".toByteArray())
                     }
                 }
             } else {
-                parseGovData(parseTrackInfo, false, null, null, false)
+                parseGovTrackData(exportTrackInfoToFile, false, null, null, false)
             }
         }
 
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
-        private fun parseGovData(
+        private fun parseGovTrackData(
             parseTrackInfo: Boolean,
             parsePaths: Boolean,
             pathFOS: FileOutputStream?,
@@ -95,21 +98,23 @@ class MappedRouteParser {
 
                                         if (writeSeparatePathFiles) {
                                             val out = FileOutputStream("$debugDir${route.trackInfo.objectId}.json")
-                                            val simCoords = simplify(multilineToCoords(route.multiLineString))
-                                            val busTrack = BusTrack(route.trackInfo.objectId, simCoords)
+                                            val simplifiedCoordinates =
+                                                simplify(multilineToCoordinates(route.multiLineString))
+                                            val busTrack = BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
                                             out.use { out.write(busTrack.toJson().toByteArray()) }
                                             pathsWritten++
-                                            pathSizeMap[route.trackInfo] = simCoords.size
+                                            pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
                                         } else {
                                             if (pathFOS != null && (pathIDsToWrite == null || pathIDsToWrite.contains(
                                                     route.trackInfo.objectId
                                                 ))
                                             ) {
-                                                val simCoords = simplify(multilineToCoords(route.multiLineString))
-                                                val busTrack = BusTrack(route.trackInfo.objectId, simCoords)
+                                                val simplifiedCoordinates =
+                                                    simplify(multilineToCoordinates(route.multiLineString))
+                                                val busTrack = BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
                                                 pathFOS.write(busTrack.toJson().toByteArray())
                                                 pathsWritten++
-                                                pathSizeMap[route.trackInfo] = simCoords.size
+                                                pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
 
                                                 // Determine whether a "," should be added
                                                 if (pathIDsToWrite == null) {
@@ -189,7 +194,7 @@ class MappedRouteParser {
                 while (reader.hasNext()) {
                     if (isMultiLineString) {
                         reader.beginArray {
-                            val hk1980Coordinates = getCoordinates(reader, ignorePath)
+                            val hk1980Coordinates = getCRSCoordinates(reader, ignorePath)
 
                             // Removes duplicates (notes: The full path is organized as individual paths between stops.
                             // The first coordinate of the next line is the same as the last coordinate of the previous
@@ -197,18 +202,18 @@ class MappedRouteParser {
                             if (wgs84coordinates.size > 0) {
                                 hk1980Coordinates.removeFirst()
                             }
-                            wgs84coordinates.addAll(getWgs84Coordinates(hk1980Coordinates))
+                            wgs84coordinates.addAll(getWgs84CRSCoordinates(hk1980Coordinates))
                         }
                     } else {
-                        val hk1980Coordinates = getCoordinates(reader, ignorePath)
-                        wgs84coordinates.addAll(getWgs84Coordinates(hk1980Coordinates))
+                        val hk1980Coordinates = getCRSCoordinates(reader, ignorePath)
+                        wgs84coordinates.addAll(getWgs84CRSCoordinates(hk1980Coordinates))
                     }
                 }
             }
             return wgs84coordinates
         }
 
-        private fun getCoordinates(reader: JsonReader, ignorePath: Boolean): MutableList<CrsCoordinate> {
+        private fun getCRSCoordinates(reader: JsonReader, ignorePath: Boolean): MutableList<CrsCoordinate> {
             if (ignorePath) {
                 while (reader.hasNext()) {
                     reader.nextArray()
@@ -230,7 +235,7 @@ class MappedRouteParser {
             }
         }
 
-        private fun getWgs84Coordinates(hk1980Coordinates: List<CrsCoordinate>): List<CrsCoordinate> {
+        private fun getWgs84CRSCoordinates(hk1980Coordinates: List<CrsCoordinate>): List<CrsCoordinate> {
             return hk1980Coordinates.parallelStream().map { hk1980Coordinate ->
                 crsTransformationAdapter.transformToCoordinate(
                     hk1980Coordinate, EpsgNumber.WORLD__WGS_84__4326
@@ -238,9 +243,9 @@ class MappedRouteParser {
             }.collect(Collectors.toList())
         }
 
-        private fun multilineToCoords(multiline: List<CrsCoordinate>) = multiline.map { crsCoordinate ->
-            val lat = crsCoordinate.getLatitude().roundLatLng()
-            val long = crsCoordinate.getLongitude().roundLatLng()
+        private fun multilineToCoordinates(multiline: List<CrsCoordinate>) = multiline.map { crsCoordinate ->
+            val lat = crsCoordinate.getLatitude().roundCoordinate()
+            val long = crsCoordinate.getLongitude().roundCoordinate()
             listOf(lat, long)
         }
     }
@@ -249,7 +254,7 @@ class MappedRouteParser {
 fun main() {
     execute("Parsing trackInfo...", true) {
         MappedRouteParser.parseFile(
-            parseTrackInfo = true, parsePaths = true, pathIDsToWrite = null, writeSeparatePathFiles = false
+            exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = null, writeSeparatePathFiles = false
         )
     }
 }

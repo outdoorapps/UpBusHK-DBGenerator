@@ -2,7 +2,7 @@ package data
 
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
-import utils.Company
+import util.Company
 
 data class BusStop(
     @Json(index = 1) val company: Company,
@@ -10,7 +10,7 @@ data class BusStop(
     @Json(index = 3) val engName: String,
     @Json(index = 4) val chiTName: String,
     @Json(index = 5) val chiSName: String,
-    @Json(index = 6) val latLngCoord: List<Double>
+    @Json(index = 6) val coordinate: List<Double>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

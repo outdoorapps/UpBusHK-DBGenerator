@@ -2,8 +2,8 @@ package data
 
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
-import utils.Bound
-import utils.Region
+import util.Bound
+import util.Region
 
 data class MiniBusRoute(
     @Json(index = 1) val routeId: Int,

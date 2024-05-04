@@ -119,7 +119,7 @@ class Analyzer(
             origin1.coordinate, origin2.coordinate
         ) else Double.MAX_VALUE
         val destDistance = if (dest1 != null && dest2 != null) Utils.distanceInMeters(
-            dest2.coordinate, dest2.coordinate
+            dest1.coordinate, dest2.coordinate
         ) else Double.MAX_VALUE
         return originDistance <= errorDistance && destDistance <= errorDistance
     }

@@ -16,6 +16,7 @@ class Paths {
         const val BUS_STOPS_GEOJSON_PATH = "resources/CoordinateofBusStopLocation_GEOJSON.zip"
 
         const val BUS_COMPANY_DATA_EXPORT_PATH = "resources/bus_company_data.json.gz"
+        const val GOVERNMENT_BUS_DATA_EXPORT_PATH = "resources/government_bus_data.json.gz"
         const val TRACK_INFO_EXPORT_PATH = "resources/track_info.json.gz"
         const val MINIBUS_EXPORT_PATH = "resources/minibus.json.gz"
 

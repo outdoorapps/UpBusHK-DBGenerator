@@ -7,6 +7,8 @@ import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import compressToXZ
 import data.CompanyBusData
 import data.GovStop
+import data.GovernmentBusRoute
+import data.TrackInfo
 import json_model.GovStopRaw
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
@@ -15,6 +17,7 @@ import org.tukaani.xz.XZOutputStream
 import util.Paths.Companion.ARCHIVE_NAME
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
+import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
 import util.Paths.Companion.resourcesDir
 import java.io.*
 import java.math.RoundingMode
@@ -203,5 +206,33 @@ class Utils {
                         Regex("\\s*"), ""
                     )
                 }.trim()
+
+//        fun compareWithTrackInfo(governmentBusRoutes: List<GovernmentBusRoute>) {
+//            val file = File(TRACK_INFO_EXPORT_PATH)
+//            var json: String
+//            file.inputStream().use { input ->
+//                GZIPInputStream(input).use { gzInput ->
+//                    gzInput.bufferedReader().use {
+//                        json = it.readText()
+//                    }
+//                }
+//            }
+//            val trackInfoList = Klaxon().parseArray<TrackInfo>(json)!!
+//            println("TrackInfo items: ${trackInfoList.size}")
+//
+//            trackInfoList.forEach { trackInfo ->
+//                val matchingRoutes =
+//                    governmentBusRoutes.filter { it.routeId == trackInfo.routeId && it.routeSeq == trackInfo.routeSeq }
+//                if (matchingRoutes.isEmpty()) println("no matching route ${trackInfo.routeId},${trackInfo.routeSeq}")
+//                if (matchingRoutes.size > 1) println("more than one matching route ${trackInfo.routeId},${trackInfo.routeSeq} => $matchingRoutes")
+//                if (matchingRoutes.size == 1) {
+//                    val matchingRoute = matchingRoutes.first()
+//                    if (trackInfo.stStopId != matchingRoute.stStopId)
+//                        println("Starting stop doesn't match (${trackInfo.routeId},${trackInfo.routeSeq}): ${trackInfo.stStopId},${matchingRoute.stStopId}")
+//                    if (trackInfo.edStopId != matchingRoute.edStopId)
+//                        println("Starting stop doesn't match (${trackInfo.routeId},${trackInfo.routeSeq}): ${trackInfo.edStopId},${matchingRoute.edStopId}")
+//                }
+//            }
+//        }
     }
 }

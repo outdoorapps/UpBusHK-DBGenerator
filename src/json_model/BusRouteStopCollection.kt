@@ -23,7 +23,7 @@ data class GovernmentRouteStop(
     val type: String, val geometry: Geometry, @Json(name = "properties") val info: GovernmentRouteStopInfo
 )
 
-data class Geometry(val type: String, val longLatCoordinates: List<Double>)
+data class Geometry(val type: String, @Json(name = "coordinates") val longLatCoordinates: List<Double>)
 
 data class GovernmentRouteStopInfo(
     @Json(name = "routeId") val routeID: Int,

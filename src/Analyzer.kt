@@ -188,6 +188,7 @@ class Analyzer(
                     jointRoutes.add(kmbLwbRoute)
                 }
             }
+            // Get the correct company types, populate unmapped route, remove matching trackInfo to avoid duplicating match
             val company = if (lwbRouteNumbers.contains(kmbLwbRoute.number)) Company.LWB else Company.KMB
             val companies = if (trackInfo != null) {
                 trackInfos.remove(trackInfo)
@@ -222,7 +223,8 @@ class Analyzer(
                     null,
                     trackInfo?.objectId,
                     kmbLwbRoute.stops,
-                    secondaryStops
+                    secondaryStops,
+                    null
                 )
             )
         }
@@ -251,7 +253,8 @@ class Analyzer(
                     null,
                     trackInfo?.objectId,
                     it.stops,
-                    emptyList()
+                    emptyList(),
+                    null
                 )
             )
         }
@@ -280,7 +283,8 @@ class Analyzer(
                     it.routeId,
                     trackInfo?.objectId,
                     it.stops,
-                    emptyList()
+                    emptyList(),
+                    null
                 )
             )
         }

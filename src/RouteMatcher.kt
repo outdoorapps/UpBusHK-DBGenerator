@@ -16,8 +16,7 @@ import java.util.zip.GZIPInputStream
 
 // Matches bus company data and government bus data
 class RouteMatcher(
-    private val companyBusData: CompanyBusData,
-    private val governmentBusRouteData: GovernmentBusRouteData
+    private val companyBusData: CompanyBusData, private val governmentBusRouteData: GovernmentBusRouteData
 ) {
     companion object {
         fun parseGovernmentBusRouteData(export: Boolean) {
@@ -84,7 +83,7 @@ class RouteMatcher(
 
         fun loadGovernmentBusRouteData(): GovernmentBusRouteData {
             val governmentBusRouteData = GovernmentBusRouteData()
-            execute("Loading saved bus company data...") {
+            execute("Loading saved government bus route data...") {
                 val dbFile = File(GOVERNMENT_BUS_DATA_EXPORT_PATH)
                 var jsonString: String
                 dbFile.inputStream().use { input ->
@@ -92,7 +91,7 @@ class RouteMatcher(
                         jsonString = gzInput.bufferedReader().use { it.readText() }
                     }
                 }
-                val data = Klaxon().parse<GovernmentBusRouteData>(jsonString)
+                val data = GovernmentBusRouteData.fromJson(jsonString)
                 if (data != null) {
                     governmentBusRouteData.governmentBusRoutes.addAll(data.governmentBusRoutes)
                     governmentBusRouteData.governmentBusStopCoordinates.putAll(data.governmentBusStopCoordinates)
@@ -109,114 +108,54 @@ class RouteMatcher(
 
     // Generated data
     private val lwbRouteNumbers = mutableSetOf<String>()
-    private val companyGovernmentRouteMap = mutableMapOf<CompanyBusRoute, GovernmentBusRoute?>()
-
     private val jointRouteNumbers = mutableSetOf<String>()
-    private val jointRoutes = mutableListOf<CompanyBusRoute>()
 
-    fun initialize() {
-        initialCompanyData()
-    }
-
-    fun run() {
-        execute("Matching company bus routes with government data...") {
-            matchCompanyAndGovernmentRoutes()
-        }
-
-        execute("Joining company bus routes...") {
-            jointBusCompanyRoutes()
-        }
-    }
-
-    private fun matchCompanyAndGovernmentRoutes() {
-        companyBusData.companyBusRoutes.forEach { companyBusRoute ->
-            companyGovernmentRouteMap[companyBusRoute] = getGovernmentBusRouteCandidates(companyBusRoute).find { info ->
-                isBoundMatch(companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS)
-            }
-        }
-    }
-
-    private fun jointBusCompanyRoutes() {
-        kmbLwbBusCompanyRoutes.forEach { kmbLwbRoute ->
-            // Merge KMB/LWB and CTB routes
-            val governmentBusRoutes: GovernmentBusRoute? = companyGovernmentRouteMap[kmbLwbRoute]
-            val secondaryStops = mutableListOf<String>()
-            if (isJointRoute(kmbLwbRoute)) {
-                val ctbRoute = ctbBusCompanyRoutes.find { x ->
-                    x.number == kmbLwbRoute.number && isRouteBoundMatch(
-                        x, kmbLwbRoute, JOINT_ROUTE_ERROR_DISTANCE_METERS
-                    )
-                }
-                if (ctbRoute == null) {
-                    // todo add to kmbRoute
-                    println(
-                        "No CTB route matches KMB/LWB route: ${kmbLwbRoute.number},Bound:${kmbLwbRoute.bound}, service type:${kmbLwbRoute.kmbServiceType}"
-                    )
-                } else {
-                    secondaryStops.addAll(getStopMap(kmbLwbRoute, ctbRoute))
-                    jointRoutes.add(kmbLwbRoute)
-                }
-            } else {
-                //todo ?
-            }
-            val company = if (lwbRouteNumbers.contains(kmbLwbRoute.number)) Company.LWB else Company.KMB
-//            val companies = if (governmentBusRoutes != null) {
-//                trackInfos.remove(governmentBusRoutes)
-//                getCompanies(governmentBusRoutes.companyCode)
-//            } else {
-//                if (isJointRoute(kmbLwbRoute)) {
-//                    unmappedJointRoutes.add(kmbLwbRoute)
-//                    setOf(company, Company.CTB)
-//                } else {
-//                    if (company == Company.KMB) unmappedKmbRoutes.add(kmbLwbRoute)
-//                    else unmappedLwbRoutes.add(kmbLwbRoute)
-//                    setOf(company)
-//                }
-//            }
-//            if (secondaryStops.isNotEmpty() && kmbLwbRoute.stops.size != secondaryStops.size) {
-//                println(
-//                    "Primary-secondary stops size not equal (${kmbLwbRoute.stops.size}&${secondaryStops.size}): ${kmbLwbRoute.number},${kmbLwbRoute.bound},${kmbLwbRoute.kmbServiceType}"
-//                )
-//            }
-//            busRoutes.add(
-//                BusRoute(
-//                    companies,
-//                    kmbLwbRoute.number,
-//                    kmbLwbRoute.bound,
-//                    kmbLwbRoute.originEn,
-//                    kmbLwbRoute.originChiT,
-//                    kmbLwbRoute.originChiS,
-//                    kmbLwbRoute.destEn,
-//                    kmbLwbRoute.destChiT,
-//                    kmbLwbRoute.destChiS,
-//                    kmbLwbRoute.kmbServiceType,
-//                    null,
-//                    governmentBusRoutes?.objectId,
-//                    kmbLwbRoute.stops,
-//                    secondaryStops
-//                )
-//            )
-        }
-
-    }
-
-    private fun initialCompanyData() {
-        val lwbRoutesNumbersSet = mutableSetOf<String>()
+    init {
         var lwbRouteCount = 0
         governmentBusRouteData.governmentBusRoutes.forEach {
             if (it.companyCode.contains("+")) {
                 jointRouteNumbers.add(it.routeNameE)
             }
             if (it.companyCode.contains(Company.LWB.value)) {
-                lwbRoutesNumbersSet.add(it.routeNameE)
-                if (!it.companyCode.contains("+")) lwbRouteCount++
+                lwbRouteNumbers.add(it.routeNameE)
+                if (!it.companyCode.contains("+")) lwbRouteCount++ // Joint route doesn't count as LWB route
             }
         }
-        lwbRouteNumbers.addAll(lwbRoutesNumbersSet)
-        val kmb = kmbLwbBusCompanyRoutes.size - lwbRouteCount
+        val kmbRouteCount = kmbLwbBusCompanyRoutes.size - lwbRouteCount
         println(
-            "KMB:${kmb}, LWB:${lwbRouteCount}, CTB:${ctbBusCompanyRoutes.size}, NLB:${nlbBusCompanyRoutes.size}, Joint (unique route number):${jointRouteNumbers.size}"
+            "KMB:${kmbRouteCount}, LWB:${lwbRouteCount}, CTB:${ctbBusCompanyRoutes.size}, NLB:${nlbBusCompanyRoutes.size}, Joint route (unique route number):${jointRouteNumbers.size}"
         )
+    }
+
+    fun getCompanyGovernmentBusRouteMap(): Map<CompanyBusRoute, GovernmentBusRoute?> {
+        val companyGovernmentRouteMap = mutableMapOf<CompanyBusRoute, GovernmentBusRoute?>()
+        companyBusData.companyBusRoutes.forEach { companyBusRoute ->
+            companyGovernmentRouteMap[companyBusRoute] = getGovernmentBusRouteCandidates(companyBusRoute).find { info ->
+                isCompanyGovernmentRouteBoundMatch(companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS)
+            }
+        }
+        return companyGovernmentRouteMap
+    }
+
+    fun getJointRouteMap(): Map<CompanyBusRoute, CompanyBusRoute> {
+        val jointRouteMap = mutableMapOf<CompanyBusRoute, CompanyBusRoute>()
+        kmbLwbBusCompanyRoutes.forEach { kmbLwbRoute ->
+            if (isJointRoute(kmbLwbRoute)) {
+                val ctbRoute = ctbBusCompanyRoutes.find { x ->
+                    x.number == kmbLwbRoute.number && isCompanyRouteBoundMatch(
+                        x, kmbLwbRoute, JOINT_ROUTE_ERROR_DISTANCE_METERS
+                    )
+                }
+                if (ctbRoute == null) {
+                    println(
+                        "No CTB route matches KMB/LWB route: ${kmbLwbRoute.number},Bound:${kmbLwbRoute.bound}, service type:${kmbLwbRoute.kmbServiceType}"
+                    )
+                } else {
+                    jointRouteMap[kmbLwbRoute] = ctbRoute
+                }
+            }
+        }
+        return jointRouteMap
     }
 
     private fun getGovernmentBusRouteCandidates(companyBusRoute: CompanyBusRoute): List<GovernmentBusRoute> =
@@ -234,7 +173,7 @@ class RouteMatcher(
     private fun isJointRoute(companyBusRoute: CompanyBusRoute): Boolean =
         jointRouteNumbers.contains(companyBusRoute.number)
 
-    private fun isBoundMatch(
+    private fun isCompanyGovernmentRouteBoundMatch(
         companyBusRoute: CompanyBusRoute, governmentBusRoute: GovernmentBusRoute, errorDistance: Double
     ): Boolean {
         val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }?.coordinate
@@ -251,7 +190,7 @@ class RouteMatcher(
         return originsDistance <= errorDistance && destinationsDistance <= errorDistance
     }
 
-    private fun isRouteBoundMatch(
+    private fun isCompanyRouteBoundMatch(
         companyBusRoute1: CompanyBusRoute, companyBusRoute2: CompanyBusRoute, errorDistance: Double
     ): Boolean {
         val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute1.stops.first() }?.coordinate
@@ -311,6 +250,9 @@ class RouteMatcher(
         }
         return result
     }
+
+    private fun getCompanies(companyCode: String): Set<Company> =
+        companyCode.split("+").map { Company.fromValue(it) }.toSet()
 }
 
 fun main() {
@@ -331,13 +273,22 @@ fun main() {
         }
     }
 
-    var governmentBusRouteData = GovernmentBusRouteData()
-    execute("Loading saved government bus data...") {
-        governmentBusRouteData = loadGovernmentBusRouteData()
-    }
-
-    // 1. Load all necessary data
+    val governmentBusRouteData = loadGovernmentBusRouteData()
     val routeMatcher = RouteMatcher(companyBusData, governmentBusRouteData)
-    routeMatcher.initialize()
-    routeMatcher.run()
+
+    var companyGovernmentBusRouteMap = emptyMap<CompanyBusRoute, GovernmentBusRoute?>()
+    execute("Matching company bus routes with government data...") {
+        companyGovernmentBusRouteMap = routeMatcher.getCompanyGovernmentBusRouteMap()
+    }
+    val companyRouteWithMatchCount = companyGovernmentBusRouteMap.filter { (_, v) -> v != null }.size
+    val companyRouteWithoutMatch = companyGovernmentBusRouteMap.filter { (_, v) -> v == null }
+    // println(companyRouteWithoutMatch)
+    // todo improve matching
+    println("Company route with a match: $companyRouteWithMatchCount, Company route without a match: ${companyRouteWithoutMatch.size}")
+
+    var jointRouteMap = emptyMap<CompanyBusRoute, CompanyBusRoute>()
+    execute("Joining company bus routes...") {
+        jointRouteMap = routeMatcher.getJointRouteMap()
+    }
+    println("Joint routes: ${jointRouteMap.size}")
 }

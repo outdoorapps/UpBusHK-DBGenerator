@@ -138,7 +138,7 @@ class RouteMatcher(
         }
 
         // todo 2nd round 200 m allowance (+10 match)
-        companyGovernmentRouteMap.forEach { (t, u) ->  if(u != null) jointedList.remove(t)}
+        companyGovernmentRouteMap.forEach { (t, u) -> if (u != null) jointedList.remove(t) }
         jointedList.forEach { companyBusRoute ->
             companyGovernmentRouteMap[companyBusRoute] = getGovernmentBusRouteCandidates(companyBusRoute).find { info ->
                 isCompanyGovernmentRouteBoundMatch(companyBusRoute, info, 200.0)
@@ -199,23 +199,26 @@ class RouteMatcher(
         errorDistance: Double,
         printValues: Boolean = false
     ): Boolean {
-        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }?.coordinate
-        val destination1 =
-            companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }?.coordinate
+        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }
+        val destination1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }
         val origin2 = governmentBusRouteData.governmentBusStopCoordinates[governmentBusRoute.stStopId]
         val destination2 = governmentBusRouteData.governmentBusStopCoordinates[governmentBusRoute.edStopId]
-        val originsDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
-            origin1, origin2
-        ) else Double.MAX_VALUE
-        val destinationsDistance = if (destination1 != null && destination2 != null) Utils.distanceInMeters(
-            destination1, destination2
-        ) else Double.MAX_VALUE
+        val originsDistance =
+            if (origin1 != null && origin2 != null) {
+                if (patchMap[origin1.stopId] != null && patchMap[origin1.stopId] == governmentBusRoute.stStopId) 0.0 //todo patch condition (+3 matches)
+                else Utils.distanceInMeters(origin1.coordinate, origin2)
+            } else Double.MAX_VALUE
+        val destinationsDistance = if (destination1 != null && destination2 != null) {
+            if (patchMap[destination1.stopId] != null && patchMap[destination1.stopId] == governmentBusRoute.stStopId) 0.0
+            else Utils.distanceInMeters(destination1.coordinate, destination2)
+        }else Double.MAX_VALUE
+
+
+        // todo
+
         if (printValues) {
-            val originStop1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }
-            val destinationStop1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }
             println(
-                "--origin distance:$originsDistance ($origin1,$origin2) (${originStop1?.stopId}, ${governmentBusRoute.stStopId})" +
-                        "\n--destination distance:$destinationsDistance ($destination1,$destination2), (${destinationStop1?.stopId}, ${governmentBusRoute.edStopId})"
+                "--origin distance:$originsDistance (${origin1?.coordinate},$origin2) (${origin1?.stopId}, ${governmentBusRoute.stStopId})" + "\n--destination distance:$destinationsDistance (${destination1?.coordinate},$destination2), (${destination1?.stopId}, ${governmentBusRoute.edStopId})"
             )
         }
         return originsDistance <= errorDistance && destinationsDistance <= errorDistance
@@ -286,6 +289,8 @@ class RouteMatcher(
         companyCode.split("+").map { Company.fromValue(it) }.toSet()
 }
 
+val patchMap = mapOf("152" to 12728)
+
 fun main() {
     //RouteMatcher.parseGovernmentBusRouteData(true)
     val companyBusData = CompanyBusData()
@@ -318,7 +323,7 @@ fun main() {
     var count = 0
     companyBusRouteWithoutMatch.keys.forEach {
         val candidates = routeMatcher.getGovernmentBusRouteCandidates(it)
-        if(candidates.isNotEmpty()) {
+        if (candidates.isNotEmpty()) {
             count++
             println("$count:${it.number},${it.bound},${it.company},${it.originChiT},${it.destChiT} (this route has matching candidates)")
         }

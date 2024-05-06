@@ -1,4 +1,3 @@
-import Analyzer.Companion.JOINT_ROUTE_ERROR_DISTANCE_METERS
 import Analyzer.Companion.ROUTE_INFO_ERROR_DISTANCE_METERS
 import RouteMatcher.Companion.loadGovernmentBusRouteData
 import com.beust.klaxon.Klaxon
@@ -19,6 +18,12 @@ class RouteMatcher(
     private val companyBusData: CompanyBusData, private val governmentBusRouteData: GovernmentBusRouteData
 ) {
     companion object {
+        const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
+        const val ROUTE_INFO_ERROR_DISTANCE_METERS_MAX = 220.0 // Capped for 38X's 220 m
+        const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
+
+        private val stopIdMap: Map<String, Int> = mapOf("152" to 12728) // Specific stops that require manual matching
+
         fun parseGovernmentBusRouteData(export: Boolean) {
             val governmentRouteStops = mutableListOf<GovernmentRouteStop>()
             val governmentBusStopCoordinates = mutableMapOf<Int, List<Double>>()
@@ -137,11 +142,13 @@ class RouteMatcher(
             }
         }
 
-        // todo 2nd round 200 m allowance (+10 match)
+        // 2nd round matching using greater allowance
         companyGovernmentRouteMap.forEach { (t, u) -> if (u != null) jointedList.remove(t) }
         jointedList.forEach { companyBusRoute ->
             companyGovernmentRouteMap[companyBusRoute] = getGovernmentBusRouteCandidates(companyBusRoute).find { info ->
-                isCompanyGovernmentRouteBoundMatch(companyBusRoute, info, 200.0)
+                isCompanyGovernmentRouteBoundMatch(
+                    companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS_MAX
+                ) //limit 38X
             }
         }
         return companyGovernmentRouteMap
@@ -178,7 +185,7 @@ class RouteMatcher(
         return jointRouteMap
     }
 
-    fun getGovernmentBusRouteCandidates(companyBusRoute: CompanyBusRoute): List<GovernmentBusRoute> =
+    private fun getGovernmentBusRouteCandidates(companyBusRoute: CompanyBusRoute): List<GovernmentBusRoute> =
         governmentBusRouteData.governmentBusRoutes.filter { info ->
             when (companyBusRoute.company) {
                 Company.KMB, Company.LWB -> (info.companyCode.contains(companyBusRoute.company.value) || info.companyCode.contains(
@@ -193,7 +200,7 @@ class RouteMatcher(
     private fun isJointRoute(companyBusRoute: CompanyBusRoute): Boolean =
         jointRouteNumbers.contains(companyBusRoute.number)
 
-    fun isCompanyGovernmentRouteBoundMatch(
+    private fun isCompanyGovernmentRouteBoundMatch(
         companyBusRoute: CompanyBusRoute,
         governmentBusRoute: GovernmentBusRoute,
         errorDistance: Double,
@@ -204,24 +211,25 @@ class RouteMatcher(
         val origin2 = governmentBusRouteData.governmentBusStopCoordinates[governmentBusRoute.stStopId]
         val destination2 = governmentBusRouteData.governmentBusStopCoordinates[governmentBusRoute.edStopId]
         val originsDistance =
-            if (origin1 != null && origin2 != null) {
-                if (patchMap[origin1.stopId] != null && patchMap[origin1.stopId] == governmentBusRoute.stStopId) 0.0 //todo patch condition (+3 matches)
-                else Utils.distanceInMeters(origin1.coordinate, origin2)
-            } else Double.MAX_VALUE
-        val destinationsDistance = if (destination1 != null && destination2 != null) {
-            if (patchMap[destination1.stopId] != null && patchMap[destination1.stopId] == governmentBusRoute.stStopId) 0.0
-            else Utils.distanceInMeters(destination1.coordinate, destination2)
-        }else Double.MAX_VALUE
-
-
-        // todo
-
+            if (origin1 != null && origin2 != null) Utils.distanceInMeters(origin1.coordinate, origin2)
+            else Double.MAX_VALUE
+        val destinationsDistance = if (destination1 != null && destination2 != null) Utils.distanceInMeters(
+            destination1.coordinate, destination2
+        ) else Double.MAX_VALUE
         if (printValues) {
-            println(
-                "--origin distance:$originsDistance (${origin1?.coordinate},$origin2) (${origin1?.stopId}, ${governmentBusRoute.stStopId})" + "\n--destination distance:$destinationsDistance (${destination1?.coordinate},$destination2), (${destination1?.stopId}, ${governmentBusRoute.edStopId})"
-            )
+            println("--origin distance:$originsDistance (${origin1?.coordinate},$origin2) (${origin1?.stopId}, ${governmentBusRoute.stStopId})")
+            println("--destination distance:$destinationsDistance (${destination1?.coordinate},$destination2), (${destination1?.stopId}, ${governmentBusRoute.edStopId})")
         }
-        return originsDistance <= errorDistance && destinationsDistance <= errorDistance
+        return (originsDistance <= errorDistance || isStopMatch(
+            origin1?.stopId, governmentBusRoute.stStopId
+        )) && (destinationsDistance <= errorDistance || isStopMatch(
+            destination1?.stopId, governmentBusRoute.edStopId
+        ))
+    }
+
+    private fun isStopMatch(stopId: String?, governmentStopId: Int): Boolean {
+        if (stopId == null) return false
+        return stopIdMap[stopId] == governmentStopId
     }
 
     private fun isCompanyRouteBoundMatch(
@@ -289,8 +297,6 @@ class RouteMatcher(
         companyCode.split("+").map { Company.fromValue(it) }.toSet()
 }
 
-val patchMap = mapOf("152" to 12728)
-
 fun main() {
     //RouteMatcher.parseGovernmentBusRouteData(true)
     val companyBusData = CompanyBusData()
@@ -316,22 +322,26 @@ fun main() {
         companyGovernmentBusRouteMap = routeMatcher.getCompanyGovernmentBusRouteMap()
     }
 
-    // todo improve matching
     val companyBusRouteWithMatchCount = companyGovernmentBusRouteMap.filter { (_, v) -> v != null }.size
     val companyBusRouteWithoutMatch = companyGovernmentBusRouteMap.filter { (_, v) -> v == null }
     println("Company route with a match: $companyBusRouteWithMatchCount, Company route without a match: ${companyBusRouteWithoutMatch.size}")
-    var count = 0
-    companyBusRouteWithoutMatch.keys.forEach {
-        val candidates = routeMatcher.getGovernmentBusRouteCandidates(it)
-        if (candidates.isNotEmpty()) {
-            count++
-            println("$count:${it.number},${it.bound},${it.company},${it.originChiT},${it.destChiT} (this route has matching candidates)")
-        }
-        candidates.forEach { candidate ->
-            println("-candidate:${candidate.routeNameE},${candidate.routeId},${candidate.routeSeq},${candidate.stStopNameC},${candidate.edStopNameC}")
-            routeMatcher.isCompanyGovernmentRouteBoundMatch(
-                it, candidate, ROUTE_INFO_ERROR_DISTANCE_METERS, printValues = true
-            )
-        }
-    }
+
+
+    // 6 unmatched alternative routes, 59 CTB unmatched routes, 182 routes without matching candidates
+//    var count = 0
+//    companyBusRouteWithoutMatch.keys.forEach {
+//        val candidates = routeMatcher.getGovernmentBusRouteCandidates(it)
+//        if (candidates.isNotEmpty()) {
+//            if (it.company != Company.CTB) {
+//                count++
+//                println("$count:${it.number},${it.bound},${it.company},${it.originChiT},${it.destChiT} (this route has matching candidates)")
+//                candidates.forEach { candidate ->
+//                    println("-candidate:${candidate.routeNameE},${candidate.routeId},${candidate.routeSeq},${candidate.stStopNameC},${candidate.edStopNameC}")
+//                    routeMatcher.isCompanyGovernmentRouteBoundMatch(
+//                        it, candidate, ROUTE_INFO_ERROR_DISTANCE_METERS, printValues = true
+//                    )
+//                }
+//            }
+//        }
+//    }
 }

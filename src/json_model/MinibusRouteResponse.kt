@@ -20,8 +20,6 @@ data class MinibusRouteResponse(
 
     val data: MinibusRouteList
 ) {
-    fun toJson() = klaxon.toJsonString(this)
-
     companion object {
         fun fromJson(json: String) = klaxon.parse<MinibusRouteResponse>(json)
     }

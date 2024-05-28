@@ -7,25 +7,22 @@ package json_model
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-private val klaxon = Klaxon()
 
 data class BusRouteStopCollection(
-    val type: String, @Json(name = "features") val governmentRouteStops: List<GovernmentRouteStop>
+    val type: String, @Json(name = "features") val govRouteStops: List<GovRouteStop>
 ) {
-    fun toJson() = klaxon.toJsonString(this)
-
     companion object {
-        fun fromJson(json: String) = klaxon.parse<BusRouteStopCollection>(json)
+        fun fromJson(json: String) = Klaxon().parse<BusRouteStopCollection>(json)
     }
 }
 
-data class GovernmentRouteStop(
-    val type: String, val geometry: Geometry, @Json(name = "properties") val info: GovernmentRouteStopInfo
+data class GovRouteStop(
+    val type: String, val geometry: Geometry, @Json(name = "properties") val info: GovRouteStopInfo
 )
 
 data class Geometry(val type: String, @Json(name = "coordinates") val longLatCoordinates: List<Double>)
 
-data class GovernmentRouteStopInfo(
+data class GovRouteStopInfo(
     @Json(name = "routeId") val routeID: Int,
     val companyCode: String,
     val district: String,

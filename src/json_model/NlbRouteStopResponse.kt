@@ -3,15 +3,12 @@ package json_model
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-private val klaxon = Klaxon()
-
 data class NlbRouteStopResponse(
     val stops: List<NlbStop>
 ) {
-    fun toJson() = klaxon.toJsonString(this)
 
     companion object {
-        fun fromJson(json: String) = klaxon.parse<NlbRouteStopResponse>(json)
+        fun fromJson(json: String) = Klaxon().parse<NlbRouteStopResponse>(json)
     }
 }
 

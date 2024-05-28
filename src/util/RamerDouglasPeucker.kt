@@ -9,10 +9,6 @@ import util.RamerDouglasPeucker.Companion.simplify
 import util.Utils.Companion.writeToCSV
 import java.io.File
 
-data class Coordinate(val longitude: Double, val latitude: Double) {
-    fun toJson() = Klaxon().toJsonString(this)
-}
-
 /**
  * Source https://gist.github.com/ghiermann/ed692322088bb39166a669a8ed3a6d14
  */

@@ -319,12 +319,11 @@ suspend fun runAnalyzer(companyBusData: CompanyBusData): RoutesStopsDatabase {
     val t = measureTime {
         coroutineScope {
             launch {
-                val klaxon = Klaxon()
                 val file = File(TRACK_INFO_EXPORT_PATH)
                 file.inputStream().use { input ->
                     GZIPInputStream(input).use { gzInput ->
                         val jsonString = gzInput.bufferedReader().use { it.readText() }
-                        trackInfos.addAll(klaxon.parseArray<TrackInfo>(jsonString)!!.toList())
+                        trackInfos.addAll(Klaxon().parseArray<TrackInfo>(jsonString)!!.toList())
                     }
                 }
             }

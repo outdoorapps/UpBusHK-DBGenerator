@@ -1,5 +1,6 @@
 package util
 
+import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
@@ -7,17 +8,15 @@ import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import compressToXZ
 import data.CompanyBusData
 import data.GovStop
-import data.GovernmentBusRoute
-import data.TrackInfo
 import json_model.GovStopRaw
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
+import org.apache.commons.io.input.BOMInputStream
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import util.Paths.Companion.ARCHIVE_NAME
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
-import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
 import util.Paths.Companion.resourcesDir
 import java.io.*
 import java.math.RoundingMode
@@ -103,11 +102,10 @@ class Utils {
             val govStops = mutableListOf<GovStop>()
             val crsTransformationAdapter =
                 CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
-            val klaxon = Klaxon()
             val file = ZipFile(BUS_STOPS_GEOJSON_PATH)
             val stream = file.getInputStream(file.entries().nextElement())
             val jsonString = stream.bufferedReader().use { it.readText() }
-            val busStopFeature = klaxon.parse<GovStopRaw>(jsonString)!!.features
+            val busStopFeature = Klaxon().parse<GovStopRaw>(jsonString)!!.features
             busStopFeature.forEach {
                 val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
                     eastingNorthing(

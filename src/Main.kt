@@ -50,6 +50,10 @@ suspend fun main() {
             downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
         }
 
+//    execute("Downloading $BUS_ROUTE_STOP_GEOJSON_PATH ...") {
+//        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_GEOJSON_PATH)
+//    }
+
         // III. Parse routeInfo
         execute("Parsing trackInfo...", true) {
             MappedRouteParser.parseFile(

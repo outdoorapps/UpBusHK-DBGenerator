@@ -26,7 +26,6 @@ class MappedRouteParser {
 
     companion object {
         private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
-        private val klaxon = Klaxon()
 
         // pathIDsToWrite: Write all paths if null
         // writeSeparatePathFiles: If true, write one JSON file for each path
@@ -63,75 +62,80 @@ class MappedRouteParser {
             val pathSizeMap = mutableMapOf<TrackInfo, Int>()
             val trackInfos = mutableListOf<TrackInfo>()
             val file = ZipFile(BUS_ROUTES_GEOJSON_PATH)
-            val stream = file.getInputStream(file.entries().nextElement())
             var pathsWritten = 0
 
-            JsonReader(stream.bufferedReader()).use {
-                it.beginObject {
-                    var type: String? = null
-                    var name: String? = null
-                    var crs: CRS? = null
-                    var t = Duration.ZERO
-                    while (it.hasNext()) {
-                        val readName = it.nextName()
-                        when (readName) {
-                            "type" -> type = it.nextString()
-                            "name" -> name = it.nextString()
-                            "crs" -> crs = it.beginObject {
-                                var crsType: String? = null
-                                var properties: CRSProperties? = null
-                                while (it.hasNext()) {
-                                    when (it.nextName()) {
-                                        "type" -> crsType = it.nextString()
-                                        "properties" -> properties =
-                                            klaxon.parse<CRSProperties>(it.nextObject().toJsonString())
+            file.getInputStream(file.entries().nextElement()).use { input ->
+                input.bufferedReader().use { buffer ->
+                    JsonReader(buffer).use {
+                        it.beginObject {
+                            var type: String? = null
+                            var name: String? = null
+                            var crs: CRS? = null
+                            var t = Duration.ZERO
+                            while (it.hasNext()) {
+                                when (it.nextName()) {
+                                    "type" -> type = it.nextString()
+                                    "name" -> name = it.nextString()
+                                    "crs" -> crs = it.beginObject {
+                                        var crsType: String? = null
+                                        var properties: CRSProperties? = null
+                                        while (it.hasNext()) {
+                                            when (it.nextName()) {
+                                                "type" -> crsType = it.nextString()
+                                                "properties" -> properties =
+                                                    Klaxon().parse<CRSProperties>(it.nextObject().toJsonString())
+                                            }
+                                        }
+                                        CRS(crsType!!, properties!!)
                                     }
-                                }
-                                CRS(crsType!!, properties!!)
-                            }
 
-                            "features" -> it.beginArray {
-                                while (it.hasNext()) {
-                                    val time = measureTime {
-                                        val route = getMappedRoute(it, !parsePaths)
-                                        trackInfos.add(route.trackInfo)
+                                    "features" -> it.beginArray {
+                                        while (it.hasNext()) {
+                                            val time = measureTime {
+                                                val route = getMappedRoute(it, !parsePaths)
+                                                trackInfos.add(route.trackInfo)
 
-                                        if (writeSeparatePathFiles) {
-                                            val out = FileOutputStream("$debugDir${route.trackInfo.objectId}.json")
-                                            val simplifiedCoordinates =
-                                                simplify(multilineToCoordinates(route.multiLineString))
-                                            val busTrack = BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
-                                            out.use { out.write(busTrack.toJson().toByteArray()) }
-                                            pathsWritten++
-                                            pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
-                                        } else {
-                                            if (pathFOS != null && (pathIDsToWrite == null || pathIDsToWrite.contains(
-                                                    route.trackInfo.objectId
-                                                ))
-                                            ) {
-                                                val simplifiedCoordinates =
-                                                    simplify(multilineToCoordinates(route.multiLineString))
-                                                val busTrack = BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
-                                                pathFOS.write(busTrack.toJson().toByteArray())
-                                                pathsWritten++
-                                                pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
+                                                if (writeSeparatePathFiles) {
+                                                    val out =
+                                                        FileOutputStream("$debugDir${route.trackInfo.objectId}.json")
+                                                    val simplifiedCoordinates =
+                                                        simplify(multilineToCoordinates(route.multiLineString))
+                                                    val busTrack =
+                                                        BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
+                                                    out.use { out.write(busTrack.toJson().toByteArray()) }
+                                                    pathsWritten++
+                                                    pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
+                                                } else {
+                                                    if (pathFOS != null && (pathIDsToWrite == null || pathIDsToWrite.contains(
+                                                            route.trackInfo.objectId
+                                                        ))
+                                                    ) {
+                                                        val simplifiedCoordinates =
+                                                            simplify(multilineToCoordinates(route.multiLineString))
+                                                        val busTrack =
+                                                            BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
+                                                        pathFOS.write(busTrack.toJson().toByteArray())
+                                                        pathsWritten++
+                                                        pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
 
-                                                // Determine whether a "," should be added
-                                                if (pathIDsToWrite == null) {
-                                                    if (it.hasNext()) {
-                                                        pathFOS.write(",".toByteArray())
-                                                    }
-                                                } else if (pathIDsToWrite.contains(route.trackInfo.objectId)) {
-                                                    if (pathsWritten < pathIDsToWrite.size) {
-                                                        pathFOS.write(",".toByteArray())
+                                                        // Determine whether a "," should be added
+                                                        if (pathIDsToWrite == null) {
+                                                            if (it.hasNext()) {
+                                                                pathFOS.write(",".toByteArray())
+                                                            }
+                                                        } else if (pathIDsToWrite.contains(route.trackInfo.objectId)) {
+                                                            if (pathsWritten < pathIDsToWrite.size) {
+                                                                pathFOS.write(",".toByteArray())
+                                                            }
+                                                        }
                                                     }
                                                 }
                                             }
+                                            t = t.plus(time)
+                                            if (trackInfos.size % 100 == 0) {
+                                                println("- ${trackInfos.size} routes parsed in $t")
+                                            }
                                         }
-                                    }
-                                    t = t.plus(time)
-                                    if (trackInfos.size % 100 == 0) {
-                                        println("- ${trackInfos.size} routes parsed in $t")
                                     }
                                 }
                             }
@@ -140,12 +144,12 @@ class MappedRouteParser {
                 }
             }
             if (pathFOS != null) {
-                println("- $pathsWritten paths written")
-                println("Routes with >100 coordinates:${pathSizeMap.values.filter { it > 100 }.size}")
-                println("Routes with >500 coordinates:${pathSizeMap.values.filter { it > 500 }.size}")
-                println("Routes with >1000 coordinates:${pathSizeMap.values.filter { it > 1000 }.size}")
-                println("Routes with >2000 coordinates:${pathSizeMap.values.filter { it > 2000 }.size}")
-                println("Routes with >3000 coordinates:${pathSizeMap.values.filter { it > 3000 }.size}")
+                println("- $pathsWritten tracks written")
+                println("Tracks with >100 coordinates:${pathSizeMap.values.filter { it > 100 }.size}")
+                println("Tracks with >500 coordinates:${pathSizeMap.values.filter { it > 500 }.size}")
+                println("Tracks with >1000 coordinates:${pathSizeMap.values.filter { it > 1000 }.size}")
+                println("Tracks with >2000 coordinates:${pathSizeMap.values.filter { it > 2000 }.size}")
+                println("Tracks with >3000 coordinates:${pathSizeMap.values.filter { it > 3000 }.size}")
                 println("Max:${pathSizeMap.values.maxOrNull()}, Min:${pathSizeMap.values.minOrNull()}")
             }
 
@@ -170,7 +174,7 @@ class MappedRouteParser {
                 while (reader.hasNext()) {
                     when (reader.nextName()) {
                         "type" -> featuresType = reader.nextString()
-                        "properties" -> trackInfo = klaxon.parse<TrackInfo>(reader.nextObject().toJsonString())
+                        "properties" -> trackInfo = Klaxon().parse<TrackInfo>(reader.nextObject().toJsonString())
 
                         "geometry" -> reader.beginObject {
                             var geometryType: String? = null

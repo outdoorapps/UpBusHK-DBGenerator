@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty
 import com.fasterxml.jackson.annotation.JsonRootName
 
 @JsonRootName("dataroot")
-data class BusFareRoot(@JsonProperty("FARE") val list: List<BusFare>)
+data class BusFareCollection(@JsonProperty("FARE") val list: List<BusFare>)
 
 @JsonRootName("FARE")
 data class BusFare(

@@ -1,7 +1,7 @@
 import TrackMatcher.Companion.intermediates
 import Uploader.Companion.upload
-import data.MinibusData
 import data.CompanyBusData
+import data.MinibusData
 import data.RoutesStopsDatabase
 import helper.BusRouteHelper.Companion.getRoutes
 import helper.BusStopHelper
@@ -12,13 +12,19 @@ import util.HttpUtils.Companion.downloadIgnoreCertificate
 import util.Patch.Companion.patchRoutes
 import util.Patch.Companion.patchStops
 import util.Paths
+import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
+import util.Paths.Companion.BUS_FARE_PATH
+import util.Paths.Companion.BUS_FARE_URL
 import util.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
 import util.Paths.Companion.BUS_ROUTES_GEOJSON_URL
+import util.Paths.Companion.BUS_ROUTE_STOP_GEOJSON_PATH
+import util.Paths.Companion.BUS_ROUTE_STOP_URL
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import util.Paths.Companion.DB_VERSION_EXPORT_PATH
 import util.Paths.Companion.MINIBUS_EXPORT_PATH
-import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
+import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_PATH
+import util.Paths.Companion.MINIBUS_STOP_GEOJSON_URL
 import util.Paths.Companion.resourcesDir
 import util.Utils
 import util.Utils.Companion.execute
@@ -41,22 +47,16 @@ suspend fun main() {
         val requestedData = getBusCompanyData()
         val minibusData = getMinibusData()
 
-        // II. Download trackInfo-path file
-        execute("Downloading $BUS_ROUTES_GEOJSON_PATH ...") {
-            downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
-        }
-
-        execute("Downloading $BUS_STOPS_GEOJSON_PATH ...") {
-            downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
-        }
-
-//    execute("Downloading $BUS_ROUTE_STOP_GEOJSON_PATH ...") {
-//        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_GEOJSON_PATH)
-//    }
+        // II. Download Government data files
+        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
+        downloadIgnoreCertificate(MINIBUS_STOP_GEOJSON_URL, MINIBUS_STOPS_GEOJSON_PATH)
 
         // III. Parse routeInfo
         execute("Parsing trackInfo...", true) {
-            MappedRouteParser.parseFile(
+            TrackParser.parseFile(
                 exportTrackInfoToFile = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = true
             )
         }
@@ -79,8 +79,11 @@ suspend fun main() {
         execute("Writing paths \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
             val pathIDs = mutableSetOf<Int>()
             rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
-            MappedRouteParser.parseFile(
-                exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
+            TrackParser.parseFile(
+                exportTrackInfoToFile = true,
+                parsePaths = true,
+                pathIDsToWrite = pathIDs,
+                writeSeparatePathFiles = false
             )
         }
         Utils.writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)

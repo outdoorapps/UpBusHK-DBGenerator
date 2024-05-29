@@ -1,6 +1,9 @@
 package util
 
 import okhttp3.*
+import util.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
+import util.Paths.Companion.BUS_ROUTES_GEOJSON_URL
+import util.Utils.Companion.execute
 import java.io.FileOutputStream
 import java.io.IOException
 import java.security.SecureRandom
@@ -50,15 +53,17 @@ class HttpUtils {
         }
 
         fun downloadIgnoreCertificate(url: String, outputPath: String) {
-            val request = Request.Builder().url(url).build()
-            val response = okHttpClientIgnoreCertificate.newCall(request).execute()
+            execute("Downloading $outputPath ...") {
+                val request = Request.Builder().url(url).build()
+                val response = okHttpClientIgnoreCertificate.newCall(request).execute()
 
-            response.use {
-                if (it.isSuccessful && it.body != null) {
-                    val input = it.body!!.byteStream()
-                    val out = FileOutputStream(outputPath)
-                    input.use {
-                        out.write(input.readBytes())
+                response.use {
+                    if (it.isSuccessful && it.body != null) {
+                        val input = it.body!!.byteStream()
+                        val out = FileOutputStream(outputPath)
+                        input.use {
+                            out.write(input.readBytes())
+                        }
                     }
                 }
             }

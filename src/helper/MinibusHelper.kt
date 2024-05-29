@@ -1,6 +1,5 @@
 package helper
 
-import com.beust.klaxon.KlaxonException
 import com.github.houbb.opencc4j.util.ZhConverterUtil
 import data.MiniBusRoute
 import data.MinibusData
@@ -19,8 +18,10 @@ import util.APIs.Companion.MINIBUS_STOP_URL
 import util.Bound
 import util.HttpUtils.Companion.get
 import util.HttpUtils.Companion.getAsync
+import util.TransportType
 import util.Utils
 import util.Utils.Companion.execute
+import util.Utils.Companion.loadGovStop
 import util.Utils.Companion.roundCoordinate
 import util.Utils.Companion.standardizeChiStopName
 import java.util.concurrent.CountDownLatch
@@ -40,13 +41,42 @@ class MinibusHelper {
             minibusData.minibusRoutes.addAll(getRoutes())
         }
 
-        execute("Getting minibus stops...", printOnNextLine = true) {
-            val stopIDs = mutableSetOf<Int>()
+        val stopIDsNeededLatLng = mutableSetOf<Int>()
+        val stopIDLatLngMap = mutableMapOf<Int, List<Double>>()
+        execute("Matching minibus stops data...") {
             minibusData.minibusRoutes.forEach {
-                stopIDs.addAll(it.stops)
+                stopIDsNeededLatLng.addAll(it.stops)
             }
-            minibusData.minibusStops.addAll(getStops(stopIDs))
+
+            val minibusStopsOnFile = loadGovStop(TransportType.MINIBUS)
+
+            stopIDsNeededLatLng.forEach {
+                val latLng = minibusStopsOnFile.find { stopOnFile -> stopOnFile.stopId == it }?.coordinate
+                if (latLng != null) stopIDLatLngMap[it] = latLng
+            }
+            stopIDsNeededLatLng.removeAll(stopIDLatLngMap.keys)
         }
+        println("Minibus stops on file: ${stopIDLatLngMap.size}, not on file: ${stopIDsNeededLatLng.size}")
+
+        if (stopIDsNeededLatLng.isNotEmpty()) {
+            execute("Requesting minibus stop coordinates not on file...") {
+                do {
+                    stopIDsNeededLatLng.forEach {
+                        val response = get("$MINIBUS_STOP_URL/$it")
+                        val data = MinibusStopResponse.fromJson(response)?.data
+                        val lat = data?.coordinates?.wgs84?.latitude!!.roundCoordinate()
+                        val long = data.coordinates.wgs84.longitude.roundCoordinate()
+                        stopIDLatLngMap[it] = listOf(lat, long)
+                    }
+                    stopIDsNeededLatLng.removeAll(stopIDLatLngMap.keys)
+                } while (stopIDsNeededLatLng.isNotEmpty())
+            }
+        }
+
+        execute("Getting minibus stops info...", printOnNextLine = true) {
+            minibusData.minibusStops.addAll(getStops(stopIDLatLngMap))
+        }
+        println("Minibus routes added: ${minibusData.minibusRoutes.size}, minibus stops added: ${minibusData.minibusStops.size}")
         return minibusData
     }
 
@@ -109,17 +139,17 @@ class MinibusHelper {
         }
         countDownLatch.await()
         list.sortWith(compareBy({ it.number }, { it.bound }, { it.region }))
-        println("Total minibus routes added (inbound & outbound): ${list.size}")
+        println("Minibus routes added (inbound & outbound): ${list.size}")
         return list
     }
 
-    private fun getStops(stopIDs: Set<Int>): List<MinibusStop> {
+    private fun getStops(stopIDLatLngMap: Map<Int, List<Double>>): List<MinibusStop> {
         this.stopIDs.clear()
-        this.stopIDs.addAll(stopIDs)
+        this.stopIDs.addAll(stopIDLatLngMap.keys)
         val list = mutableListOf<MinibusStop>()
 
         do {
-            list.addAll(getStopsAsync())
+            list.addAll(getStopsAsync(stopIDLatLngMap))
             val size = this.stopIDs.size
             if (size != 0) {
                 println("$size errors received, waiting for ${TIMEOUT_SECOND}s before restarting...")
@@ -128,39 +158,30 @@ class MinibusHelper {
             }
         } while (this.stopIDs.isNotEmpty())
         list.sortBy { it.stopId }
-        println("Total minibus stops: ${list.size}")
         return list
     }
 
-    private fun getStopsAsync(): List<MinibusStop> {
+    private fun getStopsAsync(stopIDLatLngMap: Map<Int, List<Double>>): List<MinibusStop> {
         val list = mutableListOf<MinibusStop>()
         val totalCount = stopIDs.size
         val countDownLatch = CountDownLatch(totalCount)
         val start = System.currentTimeMillis()
 
         stopIDs.forEach { stopId ->
-            getAsync("$MINIBUS_STOP_URL/${stopId}", onFailure = {
+            getAsync("$MINIBUS_STOP_ROUTE_URL/$stopId", onFailure = {
                 countDownLatch.countDown()
                 // println("Request for minibus stopID $stopId failed")
-            }, onResponse = { minibusStopResponse ->
-                val data = MinibusStopResponse.fromJson(minibusStopResponse)?.data
-                val lat = data?.coordinates?.wgs84?.latitude!!.roundCoordinate()
-                val long = data.coordinates.wgs84.longitude.roundCoordinate()
-
-                val response = get("$MINIBUS_STOP_ROUTE_URL/$stopId")
+            }, onResponse = { response ->
                 var newStop: MinibusStop? = null
-                try {
-                    val stopRouteData = MinibusStopRouteResponse.fromJson(response)?.data
-                    if (!stopRouteData.isNullOrEmpty()) {
-                        // Choose the name set with the shortest standardize traditional Chinese name
-                        val nameSet = stopRouteData.sortedBy { it.nameTc.standardizeChiStopName().length }[0]
-                        val nameTc = nameSet.nameTc.standardizeChiStopName()
+                val stopRouteData = MinibusStopRouteResponse.fromJson(response)?.data
+                if (!stopRouteData.isNullOrEmpty()) {
+                    // Choose the name set with the shortest standardize traditional Chinese name
+                    val nameSet = stopRouteData.sortedBy { it.nameTc.standardizeChiStopName().length }[0]
+                    val nameTc = nameSet.nameTc.standardizeChiStopName()
 
-                        // Always generate simplified Chinese (Server fills it with traditional or is missing)
-                        val nameSc = ZhConverterUtil.toSimple(nameTc)
-                        newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, listOf(lat, long))
-                    }
-                } catch (_: KlaxonException) {
+                    // Always generate simplified Chinese (Server fills it with traditional or is missing)
+                    val nameSc = ZhConverterUtil.toSimple(nameTc)
+                    newStop = MinibusStop(stopId, nameSet.nameEn, nameTc, nameSc, stopIDLatLngMap[stopId]!!)
                 }
                 CoroutineScope(Dispatchers.IO).launch {
                     mutex.withLock {

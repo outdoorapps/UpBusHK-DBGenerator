@@ -5,24 +5,23 @@ package json_model
 //   val ctbRouteStopResponse = CtbRouteStopResponse.fromJson(jsonString)
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
-import data.CRS
 
 
-data class GovStopRaw(
+data class GovStopCollection(
     val type: String, val name: String, val crs: CRS, val features: List<Feature>
 ) {
 
     companion object {
-        fun fromJson(json: String) = Klaxon().parse<GovStopRaw>(json)
+        fun fromJson(json: String) = Klaxon().parse<GovStopCollection>(json)
     }
 }
 
 data class Feature(
-    val type: String, val geometry: BusStopRawGeometry, val properties: FeatureProperties
+    val type: String, val geometry: StopGeometry, val properties: FeatureProperties
 )
 
-data class BusStopRawGeometry(
-    val type: String, val coordinates: List<Int>
+data class StopGeometry(
+    val type: String, @Json(name = "coordinates") val hk1980Coordinates: List<Int>
 )
 
 data class FeatureProperties(

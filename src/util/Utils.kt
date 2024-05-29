@@ -1,6 +1,5 @@
 package util
 
-import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
@@ -8,15 +7,15 @@ import com.programmerare.crsTransformations.coordinate.eastingNorthing
 import compressToXZ
 import data.CompanyBusData
 import data.GovStop
-import json_model.GovStopRaw
+import json_model.GovStopCollection
 import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
-import org.apache.commons.io.input.BOMInputStream
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
 import util.Paths.Companion.ARCHIVE_NAME
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
+import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.resourcesDir
 import java.io.*
 import java.math.RoundingMode
@@ -98,25 +97,32 @@ class Utils {
             return companyBusData
         }
 
-        fun loadGovRecordStop(): List<GovStop> {
+        fun loadGovStop(type: TransportType): List<GovStop> {
             val govStops = mutableListOf<GovStop>()
             val crsTransformationAdapter =
                 CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
-            val file = ZipFile(BUS_STOPS_GEOJSON_PATH)
+            val path = when (type) {
+                TransportType.BUS -> BUS_STOPS_GEOJSON_PATH
+                TransportType.MINIBUS -> MINIBUS_STOPS_GEOJSON_PATH
+            }
+            val file = ZipFile(path)
             val stream = file.getInputStream(file.entries().nextElement())
             val jsonString = stream.bufferedReader().use { it.readText() }
-            val busStopFeature = Klaxon().parse<GovStopRaw>(jsonString)!!.features
-            busStopFeature.forEach {
+            val feature = Klaxon().parse<GovStopCollection>(jsonString)!!.features
+            feature.forEach {
                 val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
                     eastingNorthing(
-                        it.geometry.coordinates[0].toDouble(),
-                        it.geometry.coordinates[1].toDouble(),
+                        it.geometry.hk1980Coordinates[0].toDouble(),
+                        it.geometry.hk1980Coordinates[1].toDouble(),
                         EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
                     ), EpsgNumber.WORLD__WGS_84__4326
                 )
                 govStops.add(
                     GovStop(
-                        it.properties.stopId, mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
+                        it.properties.stopId, mutableListOf(
+                            crsCoordinate.getLatitude().roundCoordinate(),
+                            crsCoordinate.getLongitude().roundCoordinate()
+                        )
                     )
                 )
             }

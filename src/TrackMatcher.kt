@@ -9,11 +9,12 @@ import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
+import util.TransportType
 import util.Utils
 import util.Utils.Companion.execute
 import util.Utils.Companion.getCompanies
 import util.Utils.Companion.isSolelyOfCompany
-import util.Utils.Companion.loadGovRecordStop
+import util.Utils.Companion.loadGovStop
 import util.Utils.Companion.roundCoordinate
 import util.Utils.Companion.writeToArchive
 import util.Utils.Companion.writeToJsonFile
@@ -327,7 +328,7 @@ suspend fun matchTracks(companyBusData: CompanyBusData): RoutesStopsDatabase {
                 }
             }
             launch {
-                govStops.addAll(loadGovRecordStop())
+                govStops.addAll(loadGovStop(TransportType.BUS))
             }
         }
     }
@@ -379,7 +380,7 @@ suspend fun main() {
     execute("Writing paths \"$DB_PATHS_EXPORT_PATH\"...", true) {
         val pathIDs = mutableSetOf<Int>()
         rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
-        MappedRouteParser.parseFile(
+        TrackParser.parseFile(
             exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )
     }

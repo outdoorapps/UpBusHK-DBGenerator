@@ -39,3 +39,5 @@ enum class Region(val value: String) {
         }
     }
 }
+
+enum class TransportType {BUS, MINIBUS}

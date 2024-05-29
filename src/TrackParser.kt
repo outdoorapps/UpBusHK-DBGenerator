@@ -4,7 +4,11 @@ import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumb
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import data.*
+import data.BusTrack
+import data.Track
+import data.TrackInfo
+import json_model.CRS
+import json_model.CRSProperties
 import util.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
@@ -22,8 +26,8 @@ import java.util.zip.ZipFile
 import kotlin.time.Duration
 import kotlin.time.measureTime
 
-class MappedRouteParser {
-
+// Convert tracks from government data file to standardized data
+class TrackParser {
     companion object {
         private val crsTransformationAdapter = createCrsTransformationFirstSuccess()
 
@@ -165,7 +169,7 @@ class MappedRouteParser {
         }
 
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
-        private fun getMappedRoute(reader: JsonReader, ignorePath: Boolean): MappedRoute {
+        private fun getMappedRoute(reader: JsonReader, ignorePath: Boolean): Track {
             var trackInfo: TrackInfo? = null
             var multiLineString: List<CrsCoordinate> = listOf()
             reader.beginObject {
@@ -189,7 +193,7 @@ class MappedRouteParser {
                     }
                 }
             }
-            return MappedRoute(trackInfo!!, multiLineString)
+            return Track(trackInfo!!, multiLineString)
         }
 
         private fun getPath(reader: JsonReader, isMultiLineString: Boolean, ignorePath: Boolean): List<CrsCoordinate> {
@@ -257,7 +261,7 @@ class MappedRouteParser {
 
 fun main() {
     execute("Parsing trackInfo...", true) {
-        MappedRouteParser.parseFile(
+        TrackParser.parseFile(
             exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = null, writeSeparatePathFiles = false
         )
     }

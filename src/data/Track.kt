@@ -4,17 +4,9 @@ import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 
-data class MappedRoute(val trackInfo: TrackInfo, val multiLineString: List<CrsCoordinate>) {
+data class Track(val trackInfo: TrackInfo, val multiLineString: List<CrsCoordinate>) {
     fun toJson() = Klaxon().toJsonString(this)
 }
-
-data class CRS(
-    val type: String, val properties: CRSProperties
-)
-
-data class CRSProperties(
-    val name: String
-)
 
 data class TrackInfo(
     @Json(name = "OBJECTID") val objectId: Int,

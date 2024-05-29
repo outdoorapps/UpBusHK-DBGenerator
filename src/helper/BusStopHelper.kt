@@ -128,9 +128,9 @@ class BusStopHelper {
 
         val countDownLatch = CountDownLatch(nlbRoutes.size)
         nlbRoutes.forEach { busCompanyRoute ->
-            val url = "${APIs.NLB_ROUTE_STOP}${busCompanyRoute.routeId}"
+            val url = "${APIs.NLB_ROUTE_STOP}${busCompanyRoute.nlbRouteId}"
             getAsync(url, fun(_) {
-                println("Request failed for NLB stops on route: ${busCompanyRoute.routeId}")
+                println("Request failed for NLB stops on route: ${busCompanyRoute.nlbRouteId}")
                 countDownLatch.countDown()
             }, fun(responseBody) {
                 val nlbRouteStopResponse = NlbRouteStopResponse.fromJson(responseBody)

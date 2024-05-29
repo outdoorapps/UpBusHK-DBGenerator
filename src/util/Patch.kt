@@ -56,7 +56,7 @@ class Patch {
                     { it.number.toInt(Character.MAX_RADIX) },
                     { it.bound },
                     { it.kmbServiceType },
-                    { it.routeId?.toInt() })
+                    { it.nlbRouteId?.toInt() })
             )
         }
 

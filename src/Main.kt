@@ -1,8 +1,6 @@
 import TrackMatcher.Companion.intermediates
 import Uploader.Companion.upload
-import data.CompanyBusData
-import data.MinibusData
-import data.RoutesStopsDatabase
+import data.*
 import helper.BusRouteHelper.Companion.getRoutes
 import helper.BusStopHelper
 import helper.MinibusHelper
@@ -44,7 +42,7 @@ suspend fun main() {
     BasicConfigurator.configure()
     val t = measureTime {
         // I. Build routes and stops data
-        val requestedData = getBusCompanyData()
+        val companyData = getBusCompanyData()
         val minibusData = getMinibusData()
 
         // II. Download Government data files
@@ -54,15 +52,21 @@ suspend fun main() {
         downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
         downloadIgnoreCertificate(MINIBUS_STOP_GEOJSON_URL, MINIBUS_STOPS_GEOJSON_PATH)
 
-        // III. Parse routeInfo
+        // III. Parse government data
+        val govDataParser = GovDataParser(loadExistingData = false, exportToFile = true)
+
+        // IV. Match company routes with government record
+        val routeMatcher = RouteMatcher(companyData, govDataParser.govBusData)
+        //routeMatcher.busRoutes
+
+        // IV. Match company routes with government tracks record
         execute("Parsing trackInfo...", true) {
             TrackParser.parseFile(
-                exportTrackInfoToFile = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = true
+                exportTrackInfoToFile = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = false
             )
         }
 
-        // IV. Run analyzer (match paths and merge routes)
-        val busRSDatabase = matchTracks(requestedData)
+        val busRSDatabase = generateDatabase(companyData)
         val rsDatabase = RoutesStopsDatabase(
             version = busRSDatabase.version,
             busRoutes = busRSDatabase.busRoutes,

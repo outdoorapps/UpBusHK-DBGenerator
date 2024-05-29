@@ -24,7 +24,7 @@ data class GovBusRoute @JvmOverloads constructor(
 ) {
     companion object {
         fun fromJson(json: String) =
-            Klaxon().fieldConverter(StopFareMap::class, stopFareMapConverter).parse<GovBusRouteData>(json)
+            Klaxon().fieldConverter(StopFareMap::class, stopFareMapConverter).parse<GovBusData>(json)
     }
 
     fun toJson() = Klaxon().toJsonString(this)

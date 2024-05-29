@@ -43,7 +43,6 @@ class TrackMatcher(
     private val nlbBusCompanyRoutes = companyBusData.companyBusRoutes.filter { it.company == Company.NLB }
     private val lwbRouteNumbers: Set<String>
     private val jointRouteNumbers = mutableSetOf<String>()
-    val busRoutes = mutableListOf<BusRoute>()
 
     // For stats
     private val unmappedKmbRoutes = mutableListOf<CompanyBusRoute>()
@@ -166,8 +165,8 @@ class TrackMatcher(
         return secondaryStops
     }
 
-    // todo analyze and matchTracks ambiguous
-    fun analyze() {
+    fun matchTracks(): List<BusRoute> {
+        val busRoutes = mutableListOf<BusRoute>()
         // Match TrackInfo
         kmbLwbBusCompanyRoutes.forEach { kmbLwbRoute ->
             // Merge KMB/LWB and CTB routes
@@ -223,7 +222,7 @@ class TrackMatcher(
                     null,
                     trackInfo?.objectId,
                     null,
-                    kmbLwbRoute.stops,
+                    emptyMap(),// kmbLwbRoute.stops,
                     secondaryStops
                 )
             )
@@ -253,7 +252,7 @@ class TrackMatcher(
                     null,
                     trackInfo?.objectId,
                     null,
-                    it.stops,
+                    emptyMap(),// it.stops,
                     emptyList(),
                 )
             )
@@ -280,10 +279,10 @@ class TrackMatcher(
                     it.destChiT,
                     it.destChiS,
                     it.kmbServiceType,
-                    it.routeId,
+                    it.nlbRouteId,
                     trackInfo?.objectId,
                     null,
-                    it.stops,
+                    emptyMap(),// it.stops,
                     emptyList()
                 )
             )
@@ -307,15 +306,16 @@ class TrackMatcher(
         val totalUnmapped =
             unmappedKmbRoutes.size + unmappedCtbRoutes.size + unmappedNlbRoutes.size + unmappedJointRoutes.size
         println("- Total routes: ${busRoutes.size} (mapped: ${busRoutes.size - totalUnmapped}, unmapped: $totalUnmapped)")
+        return busRoutes
     }
 }
 
-suspend fun matchTracks(companyBusData: CompanyBusData): RoutesStopsDatabase {
+suspend fun generateDatabase(companyBusData: CompanyBusData): RoutesStopsDatabase {
 
     val govStops = mutableListOf<GovStop>()
     val trackInfos = mutableListOf<TrackInfo>()
 
-    print("Loading data...")
+    print("Loading track info & government bus stops data...")
     val t = measureTime {
         coroutineScope {
             launch {
@@ -337,7 +337,8 @@ suspend fun matchTracks(companyBusData: CompanyBusData): RoutesStopsDatabase {
 
     val trackMatcher = TrackMatcher(companyBusData, trackInfos, govStops)
 
-    execute("Analyzing...", true) { trackMatcher.analyze() }
+    val busRoutes = mutableListOf<BusRoute>()
+    execute("Analyzing...", true) { busRoutes.addAll(trackMatcher.matchTracks()) }
 
     execute("Rounding coordinate...") {
         val stops = companyBusData.busStops.map {
@@ -350,9 +351,7 @@ suspend fun matchTracks(companyBusData: CompanyBusData): RoutesStopsDatabase {
     }
 
     val version = Instant.now().truncatedTo(ChronoUnit.SECONDS)
-    return RoutesStopsDatabase(
-        version.toString(), trackMatcher.busRoutes, companyBusData.busStops, emptyList(), emptySet()
-    )
+    return RoutesStopsDatabase(version.toString(), busRoutes, companyBusData.busStops, emptyList(), emptySet())
 }
 
 suspend fun main() {
@@ -371,7 +370,7 @@ suspend fun main() {
             companyBusData.busStops.addAll(data.busStops)
         }
     }
-    val rsDatabase = matchTracks(companyBusData)
+    val rsDatabase = generateDatabase(companyBusData)
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
         writeToJsonFile(rsDatabase.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)

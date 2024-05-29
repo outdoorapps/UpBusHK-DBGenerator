@@ -48,11 +48,10 @@ class RouteMatcher(
                 val govStopFareMap = govBusRoute?.stopFareMap
                 val stopFareMap: MutableMap<String, Double?> =
                     companyBusRoute.stops.associateWith { null }.toMutableMap()
-                if (govStopFareMap != null && companyBusRoute.stops.size - 1 == govStopFareMap.size) {
+                if (govStopFareMap != null && companyBusRoute.stops.size == govStopFareMap.size) {
                     val fareList = govStopFareMap.values.toList()
-                    val stopList = stopFareMap.keys.toList()
-                    for (i in govStopFareMap.values.indices) {
-                        stopFareMap[stopList[i]] = fareList[i]
+                    for (i in fareList.indices) {
+                        stopFareMap[companyBusRoute.stops[i]] = fareList[i]
                     }
                 }
 
@@ -84,8 +83,40 @@ class RouteMatcher(
                 "Route count - KMB:${kmbRouteCount}, LWB:${lwbRouteCount}, CTB:${ctbRouteCount}, NLB:${nlbRouteCount}, Joint routes:${jointRouteCount}"
             )
         }
-        this.busRoutes = busRoutes
+
+        val busRoutesWithGeneratedData = generateStopBasedFare(busRoutes)
+        val fareCount = busRoutesWithGeneratedData.filter { isStopFareMapPopulated(it) }.size
+        val matchCount = busRoutes.filter { isStopFareMapPopulated(it) }.size
+        val generatedCount = busRoutesWithGeneratedData.filter { isStopFareMapPopulated(it) }.size - matchCount
+        println("Total number of bus routes:${busRoutes.size}, with fare:$fareCount (matched:$matchCount, generated:$generatedCount)")
+        this.busRoutes = busRoutesWithGeneratedData
     }
+
+    private fun generateStopBasedFare(busRoutes: List<BusRoute>): List<BusRoute> {
+        return busRoutes.map { busRoute ->
+            var newBusRoute = busRoute
+            if (busRoute.kmbServiceType != null && !isStopFareMapPopulated(busRoute)) {
+                val altRoutes = busRoutes.filter {
+                    it.number == busRoute.number && it.bound == busRoute.bound && it.companies.containsAll(busRoute.companies) && isStopFareMapPopulated(
+                        it
+                    )
+                }
+                if (altRoutes.isNotEmpty()) {
+                    val altRoute = altRoutes.maxByOrNull { it.stopFareMap.values.count { value -> value != null } }
+                    if (altRoute != null) {
+                        val generatedMap =
+                            busRoute.stopFareMap.map { (stopId, _) -> stopId to altRoute.stopFareMap[stopId] }.toMap()
+                        newBusRoute = busRoute.copy(stopFareMap = generatedMap)
+                    }
+                }
+            }
+            newBusRoute
+        }
+    }
+
+    // If the first fare value is null, the map has not been populated
+    private fun isStopFareMapPopulated(busRoute: BusRoute): Boolean =
+        busRoute.stopFareMap.values.toList().first() != null
 
     fun getCompanyGovBusRouteMap(): Map<CompanyBusRoute, GovBusRoute?> {
         val companyGovRouteMap = mutableMapOf<CompanyBusRoute, GovBusRoute?>()

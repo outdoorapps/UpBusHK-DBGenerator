@@ -5,11 +5,10 @@ import com.fasterxml.jackson.databind.MapperFeature
 import com.fasterxml.jackson.dataformat.xml.XmlMapper.builder
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.fasterxml.jackson.module.kotlin.registerKotlinModule
-import data.*
+import data.GovBusData
+import data.GovBusRoute
 import json_model.GovRouteStop
 import org.apache.commons.io.input.BOMInputStream
-import util.Company
-import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_FARE_PATH
 import util.Paths.Companion.BUS_ROUTE_STOP_GEOJSON_PATH
 import util.Paths.Companion.GOV_BUS_DATA_EXPORT_PATH
@@ -198,14 +197,6 @@ class GovDataParser(loadExistingData: Boolean, exportToFile: Boolean) {
         val routeFareMap = busFareMap[govRouteID] ?: return emptyList()
         val fareMap = routeFareMap[govRouteSeq]
         return fareMap?.values?.toList() ?: emptyList()
-    }
-
-    fun populateFareInfo(busRoutes: List<BusRoute>): List<BusRoute> {
-        // todo generate stop base fare info
-        val govBusRouteData = loadGovBusRouteData()
-
-
-        return busRoutes.map { it }
     }
 }
 

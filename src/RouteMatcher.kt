@@ -295,8 +295,8 @@ fun main() {
         }
     }
 
-    val govDataParser = GovDataParser(loadExistingData = true, exportToFile = true)
-    val routeMatcher = RouteMatcher(companyBusData, govDataParser.govBusData)
+    val govBusDataParser = GovBusDataParser(loadExistingData = true, exportToFile = true)
+    val routeMatcher = RouteMatcher(companyBusData, govBusDataParser.govBusData)
     val companyGovBusRouteMap = routeMatcher.getCompanyGovBusRouteMap()
     val companyBusRouteWithMatchCount = companyGovBusRouteMap.filter { (_, v) -> v != null }.size
     val companyBusRouteWithoutMatch = companyGovBusRouteMap.filter { (_, v) -> v == null }.size

@@ -9,7 +9,8 @@ class Paths {
         const val BUS_STOPS_GEOJSON_URL =
             "https://static.csdi.gov.hk/csdi-webpage/download/6a20951f9a1f5c1d981e80d8a45d141c/geojson"
         const val BUS_ROUTE_STOP_URL = "https://static.data.gov.hk/td/routes-fares-geojson/JSON_BUS.json"
-        const val MINIBUS_STOP_GEOJSON_URL =
+        const val MINIBUS_ROUTES_GEOJSON_URL ="https://static.data.gov.hk/td/routes-fares-geojson/JSON_GMB.json"
+        const val MINIBUS_STOPS_GEOJSON_URL =
             "https://static.csdi.gov.hk/csdi-webpage/download/e9a829325a615ad382e83268228a5d26/geojson"
         const val BUS_FARE_URL = "https://static.data.gov.hk/td/routes-fares-xml/FARE_BUS.xml"
 
@@ -21,6 +22,7 @@ class Paths {
         val BUS_STOPS_GEOJSON_PATH = "${resourcesDir}CoordinateofBusStopLocation_GEOJSON.zip"
         val BUS_ROUTE_STOP_GEOJSON_PATH = "${resourcesDir}JSON_BUS.json"
         val BUS_FARE_PATH = "${resourcesDir}FARE_BUS.xml"
+        val MINIBUS_ROUTES_GEOJSON_PATH = "${resourcesDir}JSON_GMB.json"
         val MINIBUS_STOPS_GEOJSON_PATH = "${resourcesDir}CoordinateofGMBTerminusLocation_GEOJSON.zip"
 
         val BUS_COMPANY_DATA_EXPORT_PATH = "${resourcesDir}bus_company_data.json.gz"

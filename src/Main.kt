@@ -1,4 +1,3 @@
-import Uploader.Companion.upload
 import data.*
 import helper.BusRouteHelper.Companion.getRoutes
 import helper.BusStopHelper
@@ -20,13 +19,14 @@ import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import util.Paths.Companion.DB_VERSION_EXPORT_PATH
 import util.Paths.Companion.MINIBUS_EXPORT_PATH
+import util.Paths.Companion.MINIBUS_ROUTES_GEOJSON_PATH
+import util.Paths.Companion.MINIBUS_ROUTES_GEOJSON_URL
 import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_PATH
-import util.Paths.Companion.MINIBUS_STOP_GEOJSON_URL
+import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_URL
 import util.Paths.Companion.resourcesDir
 import util.Utils
 import util.Utils.Companion.execute
 import util.Utils.Companion.executeWithCount
-import util.Utils.Companion.getArchivePath
 import util.Utils.Companion.intermediates
 import util.Utils.Companion.roundCoordinate
 import util.Utils.Companion.writeToGZ
@@ -37,7 +37,6 @@ import java.time.temporal.ChronoUnit
 import kotlin.time.measureTime
 
 // todo log // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
-// todo get fare
 // todo MTRB routes
 
 const val compressToXZ = true
@@ -53,13 +52,14 @@ suspend fun main() {
         downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
         downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_GEOJSON_PATH)
         downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
-        downloadIgnoreCertificate(MINIBUS_STOP_GEOJSON_URL, MINIBUS_STOPS_GEOJSON_PATH)
+        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_GEOJSON_PATH) //todo parse and get full fare
+        downloadIgnoreCertificate(MINIBUS_STOPS_GEOJSON_URL, MINIBUS_STOPS_GEOJSON_PATH)
 
         // III. Parse government data
-        val govDataParser = GovDataParser(loadExistingData = false, exportToFile = true)
+        val govBusDataParser = GovBusDataParser(loadExistingData = false, exportToFile = true)
 
         // IV. Match company routes with government record
-        val routeMatcher = RouteMatcher(companyBusData, govDataParser.govBusData)
+        val routeMatcher = RouteMatcher(companyBusData, govBusDataParser.govBusData)
 
         // IV. Match company routes with government tracks record
         execute("Parsing trackInfo...", true) {

@@ -20,7 +20,7 @@ import java.util.zip.GZIPInputStream
 import kotlin.time.Duration
 import kotlin.time.measureTime
 
-class GovDataParser(loadExistingData: Boolean, exportToFile: Boolean) {
+class GovBusDataParser(loadExistingData: Boolean, exportToFile: Boolean) {
     companion object {
         private val kotlinXmlMapper = builder().configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true)
             .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false).defaultUseWrapper(false).build()
@@ -202,5 +202,5 @@ class GovDataParser(loadExistingData: Boolean, exportToFile: Boolean) {
 
 
 fun main() {
-    GovDataParser(loadExistingData = false, exportToFile = true)
+    GovBusDataParser(loadExistingData = false, exportToFile = true)
 }

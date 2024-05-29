@@ -17,10 +17,8 @@ data class BusRouteStopCollection(
 }
 
 data class GovRouteStop(
-    val type: String, val geometry: Geometry, @Json(name = "properties") val info: GovRouteStopInfo
+    val type: String, val geometry: LongLatGeometry, @Json(name = "properties") val info: GovRouteStopInfo
 )
-
-data class Geometry(val type: String, @Json(name = "coordinates") val longLatCoordinates: List<Double>)
 
 data class GovRouteStopInfo(
     @Json(name = "routeId") val routeID: Int,

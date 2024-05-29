@@ -137,7 +137,7 @@ fun main() {
     }
 
     lateinit var minibusData: MinibusData
-    execute("Loading saved mini data...") {
+    execute("Loading saved minibus data...") {
         val dbFile = File(MINIBUS_EXPORT_PATH)
         var jsonString: String
         dbFile.inputStream().use { input ->
@@ -147,8 +147,8 @@ fun main() {
         }
         minibusData = Klaxon().parse<MinibusData>(jsonString)!!
     }
-    val govDataParser = GovDataParser(loadExistingData = true, exportToFile = false)
-    val routeMatcher = RouteMatcher(companyBusData, govDataParser.govBusData)
+    val govBusDataParser = GovBusDataParser(loadExistingData = true, exportToFile = false)
+    val routeMatcher = RouteMatcher(companyBusData, govBusDataParser.govBusData)
     val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
     val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
 

@@ -116,6 +116,7 @@ class MinibusHelper {
                                 destEn = direction.destEn,
                                 destChiT = direction.destTc,
                                 destChiS = ZhConverterUtil.toSimple(direction.destTc),
+                                fullFare = 0.0, // todo
                                 stops = if (stops.isNullOrEmpty()) listOf() else stops.map { stop -> stop.stopID })
 
                             CoroutineScope(Dispatchers.IO).launch {

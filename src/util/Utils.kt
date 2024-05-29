@@ -123,7 +123,7 @@ class Utils {
                 )
                 govStops.add(
                     GovStop(
-                        it.properties.stopId, mutableListOf(
+                        it.minibusRouteStopProperties.stopId, mutableListOf(
                             crsCoordinate.getLatitude().roundCoordinate(),
                             crsCoordinate.getLongitude().roundCoordinate()
                         )

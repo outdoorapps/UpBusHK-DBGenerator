@@ -63,14 +63,14 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
         val jointRouteCount = busRoutes.filter { it.companies.size > 1 }.size
 
         val mappedKmbRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.KMB) }.size
+            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.KMB) && it.trackId != null }.size
         val mappedLwRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.LWB) }.size
+            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.LWB) && it.trackId != null }.size
         val mappedCtbRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.CTB) }.size
+            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.CTB) && it.trackId != null }.size
         val mappedNlbRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.NLB) }.size
-        val mappedJointRouteCount = mappedRoutes.filter { it.companies.size > 1 }.size
+            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.NLB) && it.trackId != null }.size
+        val mappedJointRouteCount = mappedRoutes.filter { it.companies.size > 1 && it.trackId != null }.size
 
         val unmappedKmbRouteCount = kmbRouteCount - mappedKmbRouteCount
         val unmappedLwRouteCount = lwbRouteCount - mappedLwRouteCount
@@ -152,7 +152,8 @@ fun main() {
     val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
     val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
 
-    val database = generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
+    val database =
+        generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
         writeToJsonFile(database.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)

@@ -15,6 +15,8 @@ import org.tukaani.xz.XZOutputStream
 import util.Paths.Companion.ARCHIVE_NAME
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
+import util.Paths.Companion.DB_PATHS_EXPORT_PATH
+import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.resourcesDir
 import java.io.*
@@ -30,6 +32,8 @@ import kotlin.time.toDuration
 
 class Utils {
     companion object {
+        val intermediates = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
+
         fun printPercentage(currentCount: Int, totalCount: Int, startTimeInMillis: Long) {
             val percentage = currentCount.toDouble() / totalCount.toDouble() * 100
             val timeElapse = (System.currentTimeMillis() - startTimeInMillis).toDuration(DurationUnit.MILLISECONDS)
@@ -133,9 +137,6 @@ class Utils {
         fun getCompanies(companyCode: String): Set<Company> =
             companyCode.split("+").map { Company.fromValue(it) }.toSet()
 
-        fun isSolelyOfCompany(company: Company, companies: Set<Company>): Boolean =
-            companies.size == 1 && companies.contains(company)
-
         fun writeToArchive(files: List<String>, compressToXZ: Boolean, deleteSource: Boolean) {
             execute("Compressing files to archive...") {
                 val path = getArchivePath()
@@ -179,9 +180,9 @@ class Utils {
 
         fun Double.roundCoordinate(): Double = this.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
 
-        fun String.trimIdeographicSpace(): String = this.replace("\u3000", "")
+        private fun String.trimIdeographicSpace(): String = this.replace("\u3000", "")
 
-        fun String.toHalfWidth(): String {
+        private fun String.toHalfWidth(): String {
             val halfWidth = StringBuilder()
             this.map { it.toHalfWidth() }.forEach { halfWidth.append(it) }
             return halfWidth.toString()
@@ -210,33 +211,5 @@ class Utils {
                         Regex("\\s*"), ""
                     )
                 }.trim()
-
-//        fun compareWithTrackInfo(governmentBusRoutes: List<GovernmentBusRoute>) {
-//            val file = File(TRACK_INFO_EXPORT_PATH)
-//            var json: String
-//            file.inputStream().use { input ->
-//                GZIPInputStream(input).use { gzInput ->
-//                    gzInput.bufferedReader().use {
-//                        json = it.readText()
-//                    }
-//                }
-//            }
-//            val trackInfoList = Klaxon().parseArray<TrackInfo>(json)!!
-//            println("TrackInfo items: ${trackInfoList.size}")
-//
-//            trackInfoList.forEach { trackInfo ->
-//                val matchingRoutes =
-//                    governmentBusRoutes.filter { it.routeId == trackInfo.routeId && it.routeSeq == trackInfo.routeSeq }
-//                if (matchingRoutes.isEmpty()) println("no matching route ${trackInfo.routeId},${trackInfo.routeSeq}")
-//                if (matchingRoutes.size > 1) println("more than one matching route ${trackInfo.routeId},${trackInfo.routeSeq} => $matchingRoutes")
-//                if (matchingRoutes.size == 1) {
-//                    val matchingRoute = matchingRoutes.first()
-//                    if (trackInfo.stStopId != matchingRoute.stStopId)
-//                        println("Starting stop doesn't match (${trackInfo.routeId},${trackInfo.routeSeq}): ${trackInfo.stStopId},${matchingRoute.stStopId}")
-//                    if (trackInfo.edStopId != matchingRoute.edStopId)
-//                        println("Starting stop doesn't match (${trackInfo.routeId},${trackInfo.routeSeq}): ${trackInfo.edStopId},${matchingRoute.edStopId}")
-//                }
-//            }
-//        }
     }
 }

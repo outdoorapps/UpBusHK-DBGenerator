@@ -8,7 +8,7 @@ import com.google.firebase.FirebaseApp
 import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.StorageClient
 import com.google.firebase.database.FirebaseDatabase
-import data.RoutesStopsDatabase
+import data.Database
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.log4j.BasicConfigurator
 import org.tukaani.xz.XZInputStream
@@ -61,6 +61,7 @@ class Uploader {
             Utils.execute("Marking the new client database version...") {
                 val ref = FirebaseDatabase.getInstance().getReference(PUBLIC_RESOURCES_PATH)
                 val version = mapOf("client_database_version" to clientDatabaseVersion)
+                // todo add min app version compatible
                 val future = ref.setValueAsync(version)
                 try {
                     future.get(10, TimeUnit.SECONDS)
@@ -82,7 +83,7 @@ fun main() {
                 TarArchiveInputStream(xzInput).use { tarStream ->
                     tarStream.nextTarEntry
                     val jsonString = tarStream.bufferedReader().use { it.readText() }
-                    val data = Klaxon().parse<RoutesStopsDatabase>(jsonString)
+                    val data = Klaxon().parse<Database>(jsonString)
                     version = data?.version
                 }
             }

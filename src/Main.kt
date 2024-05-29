@@ -1,4 +1,3 @@
-import TrackMatcher.Companion.intermediates
 import Uploader.Companion.upload
 import data.*
 import helper.BusRouteHelper.Companion.getRoutes
@@ -28,9 +27,13 @@ import util.Utils
 import util.Utils.Companion.execute
 import util.Utils.Companion.executeWithCount
 import util.Utils.Companion.getArchivePath
+import util.Utils.Companion.intermediates
+import util.Utils.Companion.roundCoordinate
 import util.Utils.Companion.writeToGZ
 import java.io.File
 import java.io.FileOutputStream
+import java.time.Instant
+import java.time.temporal.ChronoUnit
 import kotlin.time.measureTime
 
 // todo log // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
@@ -42,7 +45,7 @@ suspend fun main() {
     BasicConfigurator.configure()
     val t = measureTime {
         // I. Build routes and stops data
-        val companyData = getBusCompanyData()
+        val companyBusData = getBusCompanyData()
         val minibusData = getMinibusData()
 
         // II. Download Government data files
@@ -56,8 +59,7 @@ suspend fun main() {
         val govDataParser = GovDataParser(loadExistingData = false, exportToFile = true)
 
         // IV. Match company routes with government record
-        val routeMatcher = RouteMatcher(companyData, govDataParser.govBusData)
-        //routeMatcher.busRoutes
+        val routeMatcher = RouteMatcher(companyBusData, govDataParser.govBusData)
 
         // IV. Match company routes with government tracks record
         execute("Parsing trackInfo...", true) {
@@ -66,23 +68,21 @@ suspend fun main() {
             )
         }
 
-        val busRSDatabase = generateDatabase(companyData)
-        val rsDatabase = RoutesStopsDatabase(
-            version = busRSDatabase.version,
-            busRoutes = busRSDatabase.busRoutes,
-            busStops = busRSDatabase.busStops,
-            minibusRoutes = minibusData.minibusRoutes,
-            minibusStops = minibusData.minibusStops
-        )
+        val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
+        val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
+
+        // V. Generate database
+        val database =
+            generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
 
         // V. Write to archive
         execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {
-            Utils.writeToJsonFile(rsDatabase.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
+            Utils.writeToJsonFile(database.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
         }
 
         execute("Writing paths \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
             val pathIDs = mutableSetOf<Int>()
-            rsDatabase.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
+            database.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
             TrackParser.parseFile(
                 exportTrackInfoToFile = true,
                 parsePaths = true,
@@ -95,12 +95,12 @@ suspend fun main() {
         execute("Writing version file \"${DB_VERSION_EXPORT_PATH}\"...") {
             val out = FileOutputStream(DB_VERSION_EXPORT_PATH)
             out.use {
-                it.write(rsDatabase.version.toByteArray())
+                it.write(database.version.toByteArray())
             }
         }
 
         // VI. Upload to Firebase and marked changes
-        upload(File(getArchivePath()), rsDatabase.version)
+        //todo upload(File(getArchivePath()), database.version)
     }
     println("Finished all tasks in $t")
 }
@@ -168,4 +168,24 @@ fun getMinibusData(): MinibusData {
         writeToGZ(minibusData.toJson(), MINIBUS_EXPORT_PATH)
     }
     return minibusData
+}
+
+fun generateDatabase(busRoutes: List<BusRoute>, busStops: List<BusStop>, minibusData: MinibusData): Database {
+    lateinit var stops: List<BusStop>
+    execute("Rounding coordinate...") {
+        stops = busStops.map {
+            val lat = it.coordinate[0].roundCoordinate()
+            val long = it.coordinate[1].roundCoordinate()
+            it.copy(coordinate = mutableListOf(lat, long))
+        }
+    }
+
+    val version = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
+    return Database(
+        version = version,
+        busRoutes = busRoutes,
+        busStops = stops,
+        minibusRoutes = minibusData.minibusRoutes,
+        minibusStops = minibusData.minibusStops
+    )
 }

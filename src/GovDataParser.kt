@@ -202,5 +202,5 @@ class GovDataParser(loadExistingData: Boolean, exportToFile: Boolean) {
 
 
 fun main() {
-
+    GovDataParser(loadExistingData = false, exportToFile = true)
 }

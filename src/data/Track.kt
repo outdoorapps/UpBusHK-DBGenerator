@@ -9,18 +9,18 @@ data class Track(val trackInfo: TrackInfo, val multiLineString: List<CrsCoordina
 }
 
 data class TrackInfo(
-    @Json(name = "OBJECTID") val objectId: Int,
-    @Json(name = "ROUTE_ID") val routeId: Int,
-    @Json(name = "ROUTE_SEQ") val routeSeq: Int,
-    @Json(name = "COMPANY_CODE") val companyCode: String,
-    @Json(name = "ROUTE_NAMEE") val routeNameE: String,
-    @Json(name = "ST_STOP_ID") val stStopId: Int,
-    @Json(name = "ST_STOP_NAMEE") val stStopNameE: String,
-    @Json(name = "ST_STOP_NAMEC") val stStopNameC: String,
-    @Json(name = "ST_STOP_NAMES") val stStopNameS: String,
-    @Json(name = "ED_STOP_ID") val edStopId: Int,
-    @Json(name = "ED_STOP_NAMEE") val edStopNameE: String,
-    @Json(name = "ED_STOP_NAMEC") val edStopNameC: String,
-    @Json(name = "ED_STOP_NAMES") val edStopNameS: String,
-    @Json(name = "Shape_Length") val shapeLength: Double
+    @Json(index = 1, name = "OBJECTID") val objectId: Int,
+    @Json(index = 2, name = "ROUTE_ID") val routeId: Int,
+    @Json(index = 3, name = "ROUTE_SEQ") val routeSeq: Int,
+    @Json(index = 4, name = "COMPANY_CODE") val companyCode: String,
+    @Json(index = 5, name = "ROUTE_NAMEE") val routeNameE: String,
+    @Json(index = 6, name = "ST_STOP_ID") val stStopId: Int,
+    @Json(index = 7, name = "ST_STOP_NAMEE") val stStopNameE: String,
+    @Json(index = 8, name = "ST_STOP_NAMEC") val stStopNameC: String,
+    @Json(index = 9, name = "ST_STOP_NAMES") val stStopNameS: String,
+    @Json(index = 10, name = "ED_STOP_ID") val edStopId: Int,
+    @Json(index = 11, name = "ED_STOP_NAMEE") val edStopNameE: String,
+    @Json(index = 12, name = "ED_STOP_NAMEC") val edStopNameC: String,
+    @Json(index = 13, name = "ED_STOP_NAMES") val edStopNameS: String,
+    @Json(index = 14, name = "Shape_Length") val shapeLength: Double
 )

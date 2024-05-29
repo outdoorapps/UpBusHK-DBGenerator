@@ -3,7 +3,7 @@ package data
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-data class RoutesStopsDatabase(
+data class Database(
     val version: String,
     @Json(index = 1, name = "bus_routes") val busRoutes: List<BusRoute>,
     @Json(index = 2, name = "bus_stops") val busStops: List<BusStop>,

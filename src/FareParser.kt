@@ -62,11 +62,12 @@ class FareParser {
                     fareMap[fareItem.onSeq] = fareItem.fare
                 }
             }
+            // Sort by onSeq, i.e. stop sequence
             busFareMap.forEach { (_, routeFareMap) ->
-                routeFareMap.forEach { (_, fareMap) ->
-                    fareMap.map { it.key to it.value }.sortedBy { it.first }.toMap()
+                routeFareMap.forEach { (key, fareMap) ->
+                    routeFareMap[key] = fareMap.toSortedMap(compareBy { it })
                 }
-            } // Sort by onSeq, i.e. stop sequence
+            }
             return busFareMap
         }
     }
@@ -104,7 +105,6 @@ fun main() {
     println("Company route with a match: $companyBusRouteWithMatchCount, Company route without a match: ${companyBusRouteWithoutMatch.size}")
 
     // todo kmb routes can use service type 1 to patch fare
-    // todo data structure, what to return
     var matchCount = 0
     var noMatchCount = 0
     var patchableCount = 0
@@ -132,6 +132,7 @@ fun main() {
             // todo stop size match
         }
     }
+    //  println("Total government count:${companyGovBusRouteMap.values.filterNotNull().size}")
     println("Government route with a fare match: $matchCount, without a fare match: $noMatchCount")
     println("Patchable count:$patchableCount")
 }

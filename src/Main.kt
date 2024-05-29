@@ -1,4 +1,4 @@
-import Analyzer.Companion.intermediates
+import TrackMatcher.Companion.intermediates
 import Uploader.Companion.upload
 import data.MinibusData
 import data.CompanyBusData
@@ -62,7 +62,7 @@ suspend fun main() {
         }
 
         // IV. Run analyzer (match paths and merge routes)
-        val busRSDatabase = runAnalyzer(requestedData)
+        val busRSDatabase = matchTracks(requestedData)
         val rsDatabase = RoutesStopsDatabase(
             version = busRSDatabase.version,
             busRoutes = busRSDatabase.busRoutes,

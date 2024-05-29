@@ -1,3 +1,4 @@
+import TrackMatcher.Companion.TRACK_INFO_ERROR_DISTANCE_METERS
 import RouteMatcher.Companion.loadGovBusRouteData
 import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
@@ -334,9 +335,6 @@ class RouteMatcher(
 }
 
 fun main() {
-    FareParser.initialize()
-    //RouteMatcher.parseGovBusRouteData(true)
-
     val companyBusData = CompanyBusData()
     execute("Loading saved bus company data...") {
         val dbFile = File(BUS_COMPANY_DATA_EXPORT_PATH)
@@ -363,25 +361,4 @@ fun main() {
     val companyBusRouteWithMatchCount = companyGovBusRouteMap.filter { (_, v) -> v != null }.size
     val companyBusRouteWithoutMatch = companyGovBusRouteMap.filter { (_, v) -> v == null }
     println("Company route with a match: $companyBusRouteWithMatchCount, Company route without a match: ${companyBusRouteWithoutMatch.size}")
-
-    //todo do Stop-based matching
-
-
-    // 6 unmatched alternative routes, 59 CTB unmatched routes, 182 routes without matching candidates
-//    var count = 0
-//    companyBusRouteWithoutMatch.keys.forEach {
-//        val candidates = routeMatcher.getGovernmentBusRouteCandidates(it)
-//        if (candidates.isNotEmpty()) {
-//            if (it.company != Company.CTB) {
-//                count++
-//                println("$count:${it.number},${it.bound},${it.company},${it.originChiT},${it.destChiT} (this route has matching candidates)")
-//                candidates.forEach { candidate ->
-//                    println("-candidate:${candidate.routeNameE},${candidate.routeId},${candidate.routeSeq},${candidate.stStopNameC},${candidate.edStopNameC}")
-//                    routeMatcher.isCompanyGovernmentRouteBoundMatch(
-//                        it, candidate, ROUTE_INFO_ERROR_DISTANCE_METERS, printValues = true
-//                    )
-//                }
-//            }
-//        }
-//    }
 }

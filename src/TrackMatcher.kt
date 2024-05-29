@@ -1,4 +1,4 @@
-import Analyzer.Companion.intermediates
+import TrackMatcher.Companion.intermediates
 import com.beust.klaxon.Klaxon
 import data.*
 import kotlinx.coroutines.coroutineScope
@@ -24,13 +24,14 @@ import java.time.temporal.ChronoUnit
 import java.util.zip.GZIPInputStream
 import kotlin.time.measureTime
 
-class Analyzer(
+// Matches bus company data and government bus track data
+class TrackMatcher(
     private val companyBusData: CompanyBusData,
     private val trackInfos: MutableList<TrackInfo>,
     private val govStops: MutableList<GovStop>
 ) {
     companion object {
-        const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
+        const val TRACK_INFO_ERROR_DISTANCE_METERS = 150.0
         const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
         val intermediates = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
     }
@@ -86,11 +87,8 @@ class Analyzer(
 
     private fun getTrackInfo(companyBusRoute: CompanyBusRoute): TrackInfo? =
         getTrackInfoCandidates(companyBusRoute).find { info ->
-            isTrackInfoBoundMatch(
-                companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS
-            )
+            isTrackInfoBoundMatch(companyBusRoute, info, TRACK_INFO_ERROR_DISTANCE_METERS)
         }
-
 
     private fun isRouteBoundMatch(
         companyBusRoute1: CompanyBusRoute, companyBusRoute2: CompanyBusRoute, errorDistance: Double
@@ -167,6 +165,7 @@ class Analyzer(
         return secondaryStops
     }
 
+    // todo analyze and matchTracks ambiguous
     fun analyze() {
         // Match TrackInfo
         kmbLwbBusCompanyRoutes.forEach { kmbLwbRoute ->
@@ -222,9 +221,9 @@ class Analyzer(
                     kmbLwbRoute.kmbServiceType,
                     null,
                     trackInfo?.objectId,
+                    null,
                     kmbLwbRoute.stops,
-                    secondaryStops,
-                    null
+                    secondaryStops
                 )
             )
         }
@@ -252,9 +251,9 @@ class Analyzer(
                     it.kmbServiceType,
                     null,
                     trackInfo?.objectId,
+                    null,
                     it.stops,
                     emptyList(),
-                    null
                 )
             )
         }
@@ -282,9 +281,9 @@ class Analyzer(
                     it.kmbServiceType,
                     it.routeId,
                     trackInfo?.objectId,
+                    null,
                     it.stops,
-                    emptyList(),
-                    null
+                    emptyList()
                 )
             )
         }
@@ -310,7 +309,7 @@ class Analyzer(
     }
 }
 
-suspend fun runAnalyzer(companyBusData: CompanyBusData): RoutesStopsDatabase {
+suspend fun matchTracks(companyBusData: CompanyBusData): RoutesStopsDatabase {
 
     val govStops = mutableListOf<GovStop>()
     val trackInfos = mutableListOf<TrackInfo>()
@@ -335,9 +334,9 @@ suspend fun runAnalyzer(companyBusData: CompanyBusData): RoutesStopsDatabase {
     println("Finished in $t")
     println("Mapped Routes:${trackInfos.size}, Bus company routes:${companyBusData.companyBusRoutes.size}, Stops (on government record):${govStops.size}")
 
-    val analyzer = Analyzer(companyBusData, trackInfos, govStops)
+    val trackMatcher = TrackMatcher(companyBusData, trackInfos, govStops)
 
-    execute("Analyzing...", true) { analyzer.analyze() }
+    execute("Analyzing...", true) { trackMatcher.analyze() }
 
     execute("Rounding coordinate...") {
         val stops = companyBusData.busStops.map {
@@ -350,7 +349,9 @@ suspend fun runAnalyzer(companyBusData: CompanyBusData): RoutesStopsDatabase {
     }
 
     val version = Instant.now().truncatedTo(ChronoUnit.SECONDS)
-    return RoutesStopsDatabase(version.toString(), analyzer.busRoutes, companyBusData.busStops, emptyList(), emptySet())
+    return RoutesStopsDatabase(
+        version.toString(), trackMatcher.busRoutes, companyBusData.busStops, emptyList(), emptySet()
+    )
 }
 
 suspend fun main() {
@@ -369,7 +370,7 @@ suspend fun main() {
             companyBusData.busStops.addAll(data.busStops)
         }
     }
-    val rsDatabase = runAnalyzer(companyBusData)
+    val rsDatabase = matchTracks(companyBusData)
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
         writeToJsonFile(rsDatabase.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)

@@ -1,9 +1,11 @@
+import RouteMatcher.Companion.loadGovBusRouteData
 import com.beust.klaxon.JsonReader
 import com.beust.klaxon.Klaxon
 import data.*
 import json_model.GovRouteStop
 import org.apache.commons.io.input.BOMInputStream
 import util.Company
+import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_ROUTE_STOP_GEOJSON_PATH
 import util.Paths.Companion.GOV_BUS_DATA_EXPORT_PATH
 import util.Utils
@@ -333,35 +335,36 @@ class RouteMatcher(
 
 fun main() {
     FareParser.initialize()
-    RouteMatcher.parseGovBusRouteData(true)
+    //RouteMatcher.parseGovBusRouteData(true)
 
+    val companyBusData = CompanyBusData()
+    execute("Loading saved bus company data...") {
+        val dbFile = File(BUS_COMPANY_DATA_EXPORT_PATH)
+        var jsonString: String
+        dbFile.inputStream().use { input ->
+            GZIPInputStream(input).use { gzInput ->
+                jsonString = gzInput.bufferedReader().use { it.readText() }
+            }
+        }
+        val data = Klaxon().parse<CompanyBusData>(jsonString)
+        if (data != null) {
+            companyBusData.companyBusRoutes.addAll(data.companyBusRoutes)
+            companyBusData.busStops.addAll(data.busStops)
+        }
+    }
 
-//    val companyBusData = CompanyBusData()
-//    execute("Loading saved bus company data...") {
-//        val dbFile = File(BUS_COMPANY_DATA_EXPORT_PATH)
-//        var jsonString: String
-//        dbFile.inputStream().use { input ->
-//            GZIPInputStream(input).use { gzInput ->
-//                jsonString = gzInput.bufferedReader().use { it.readText() }
-//            }
-//        }
-//        val data = Klaxon().parse<CompanyBusData>(jsonString)
-//        if (data != null) {
-//            companyBusData.companyBusRoutes.addAll(data.companyBusRoutes)
-//            companyBusData.busStops.addAll(data.busStops)
-//        }
-//    }
-//
-//    val govBusRouteData = loadGovBusRouteData()
-//    val routeMatcher = RouteMatcher(companyBusData, govBusRouteData)
-//    var companyGovBusRouteMap = emptyMap<CompanyBusRoute, GovBusRoute?>()
-//    execute("Matching company bus routes with government data...") {
-//        companyGovBusRouteMap = routeMatcher.getCompanyGovBusRouteMap()
-//    }
-//
-//    val companyBusRouteWithMatchCount = companyGovBusRouteMap.filter { (_, v) -> v != null }.size
-//    val companyBusRouteWithoutMatch = companyGovBusRouteMap.filter { (_, v) -> v == null }
-//    println("Company route with a match: $companyBusRouteWithMatchCount, Company route without a match: ${companyBusRouteWithoutMatch.size}")
+    val govBusRouteData = loadGovBusRouteData()
+    val routeMatcher = RouteMatcher(companyBusData, govBusRouteData)
+    var companyGovBusRouteMap = emptyMap<CompanyBusRoute, GovBusRoute?>()
+    execute("Matching company bus routes with government data...") {
+        companyGovBusRouteMap = routeMatcher.getCompanyGovBusRouteMap()
+    }
+
+    val companyBusRouteWithMatchCount = companyGovBusRouteMap.filter { (_, v) -> v != null }.size
+    val companyBusRouteWithoutMatch = companyGovBusRouteMap.filter { (_, v) -> v == null }
+    println("Company route with a match: $companyBusRouteWithMatchCount, Company route without a match: ${companyBusRouteWithoutMatch.size}")
+
+    //todo do Stop-based matching
 
 
     // 6 unmatched alternative routes, 59 CTB unmatched routes, 182 routes without matching candidates

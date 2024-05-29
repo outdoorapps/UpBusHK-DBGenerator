@@ -1,8 +1,11 @@
 package data
 
-import com.beust.klaxon.Json
+import com.beust.klaxon.*
 
-data class GovBusRoute(
+@Target(AnnotationTarget.FIELD)
+annotation class StopFareMap
+
+data class GovBusRoute @JvmOverloads constructor(
     @Json(index = 1) val routeId: Int,
     @Json(index = 2) val routeSeq: Int,
     @Json(index = 3) val companyCode: String,
@@ -17,5 +20,25 @@ data class GovBusRoute(
     @Json(index = 12) val specialType: Int,
     @Json(index = 13) val journeyTime: Int,
     @Json(index = 14) val fullFare: Double,
-    @Json(index = 15) val stopFareMap: Map<Int, Double?>, // Seq to StopID
-)
+    @StopFareMap @Json(index = 15) val stopFareMap: Map<Int, Double?> = emptyMap()
+) {
+    companion object {
+        fun fromJson(json: String) =
+            Klaxon().fieldConverter(StopFareMap::class, stopFareMapConverter).parse<GovBusRouteData>(json)
+    }
+
+    fun toJson() = Klaxon().toJsonString(this)
+}
+
+val stopFareMapConverter = object : Converter {
+    override fun canConvert(cls: Class<*>) = cls == Map::class.java
+
+    override fun toJson(value: Any): String = value.toString()
+
+    override fun fromJson(jv: JsonValue) = if (jv.obj != null) {
+        // *The normal Klaxon().parseFromJsonObject<Map<String, Double?>>(jv.obj!!) changes the order of stops
+        jv.obj!!.map.entries.associate { it.key.toInt() to it.value }
+    } else {
+        throw KlaxonException("Couldn't parse null StopFareMap")
+    }
+}

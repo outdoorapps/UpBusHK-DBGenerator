@@ -9,7 +9,6 @@ import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import util.Paths.Companion.MINIBUS_DATA_EXPORT_PATH
 import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
-import util.TransportType
 import util.Utils
 import util.Utils.Companion.execute
 import util.Utils.Companion.intermediates

@@ -50,7 +50,8 @@ class MinibusHelper {
         }
 
         // 3. Parse government stop data on file & add fare info
-        val govMinibusData = GovDataParser.getGovMiniBusData(loadExistingData = false, exportToFile = exportIntermediates)
+        val govMinibusData =
+            GovDataParser.getGovMiniBusData(loadExistingData = false, exportToFile = exportIntermediates)
         minibusRoutes = minibusRoutes.map {
             val matchingRoute =
                 govMinibusData.minibusRoutes.find { e -> it.number == e.number && it.bound == e.bound && it.region == e.region }
@@ -78,11 +79,13 @@ class MinibusHelper {
             }
         }
         minibusStops.sortBy { it.stopId }
+        val roundedMinibusStops =
+            minibusStops.map { stop -> stop.copy(coordinate = stop.coordinate.map { it.roundCoordinate() }) }
         println("- Total minibus routes: ${minibusRoutes.size}, total minibus stops: ${minibusStops.size}")
 
         // 6. Export to file if needed
-        val minibusData = MinibusData(minibusRoutes, minibusStops)
-        if(exportToFile) {
+        val minibusData = MinibusData(minibusRoutes, roundedMinibusStops)
+        if (exportToFile) {
             execute("Writing minibus data \"$MINIBUS_DATA_EXPORT_PATH\"...") {
                 writeToGZ(minibusData.toJson(), MINIBUS_DATA_EXPORT_PATH)
             }

@@ -29,8 +29,8 @@ class Paths {
         val MINIBUS_DATA_EXPORT_PATH = "${generatedDir}minibus.json.gz"
         val GOV_MINIBUS_DATA_EXPORT_PATH = "${generatedDir}gov_minibus.json.gz"
 
-        val DB_ROUTES_STOPS_EXPORT_PATH = "${resourcesDir}DB_routes-and-stops.json"
-        val DB_PATHS_EXPORT_PATH = "${resourcesDir}DB_tracks.json"
+        val DB_ROUTES_STOPS_EXPORT_PATH = "${generatedDir}DB_routes-and-stops.json"
+        val DB_PATHS_EXPORT_PATH = "${generatedDir}DB_tracks.json"
         val DB_VERSION_EXPORT_PATH = "${resourcesDir}UpBusHK-DB-version.txt" //todo remove
 
         const val ARCHIVE_NAME = "UpBusHK-DB"

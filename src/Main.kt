@@ -137,7 +137,7 @@ fun main() {
 
         // II. Build bus (company) and minibus (online and government) data
         val companyBusData = getBusCompanyData()
-        val minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = false)
+        val minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = true)
 
         // III. Parse government bus data
         val govBusData = GovDataParser.getGovBusData(loadExistingData = false, exportToFile = true)

@@ -120,10 +120,7 @@ class Utils {
                 )
                 govStops.add(
                     GovStop(
-                        it.properties.stopId, mutableListOf(
-                            crsCoordinate.getLatitude().roundCoordinate(),
-                            crsCoordinate.getLongitude().roundCoordinate()
-                        )
+                        it.properties.stopId, mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
                     )
                 )
             }

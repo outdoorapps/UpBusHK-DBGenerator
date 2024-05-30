@@ -177,7 +177,7 @@ class GovDataParser {
                                 assert(fareList.size == routeStopsOfRoute.size - 1) //todo handle
                                 if (fareList.size == routeStopsOfRoute.size - 1) {
                                     for (i in fareList.indices) {
-                                        stopFareMap[routeStopsOfRoute[i].info.stopID] = null //fareList[i]
+                                        stopFareMap[routeStopsOfRoute[i].info.stopID] = fareList[i]
                                     }
                                 } else {
                                     println("Size mismatch:${fareList.size} and ${routeStopsOfRoute.size - 1} - ${info.routeID},${info.routeSeq},${info.companyCode},${info.routeNameE}")

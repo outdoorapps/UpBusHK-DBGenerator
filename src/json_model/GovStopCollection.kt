@@ -15,10 +15,10 @@ data class GovStopCollection(
 }
 
 data class GovStopFeature(
-    val type: String, val geometry: HK1980Geometry, val properties: FeatureProperties
+    val type: String, val geometry: HK1980Geometry, val properties: Properties
 )
 
-data class FeatureProperties(
+data class Properties(
     @Json(name = "OBJECTID") val objectid: Int,
     @Json(name = "STOP_ID") val stopId: Int,
     @Json(name = "LAST_UPDATE_DATE") val lastUpdateDate: String

@@ -1,10 +1,10 @@
 package util
 
+import Main.Companion.COMPRESS_TO_XZ
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import compressToXZ
 import data.CompanyBusData
 import data.GovStop
 import json_model.GovStopCollection
@@ -17,7 +17,6 @@ import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
-import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.resourcesDir
 import java.io.*
 import java.math.RoundingMode
@@ -101,17 +100,15 @@ class Utils {
             return companyBusData
         }
 
-        fun loadGovStop(type: TransportType): List<GovStop> {
+        fun loadGovBusStops(): List<GovStop> {
             val govStops = mutableListOf<GovStop>()
             val crsTransformationAdapter =
                 CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
-            val path = when (type) {
-                TransportType.BUS -> BUS_STOPS_GEOJSON_PATH
-                TransportType.MINIBUS -> MINIBUS_STOPS_GEOJSON_PATH
+            val file = ZipFile(BUS_STOPS_GEOJSON_PATH)
+            val jsonString = file.getInputStream(file.entries().nextElement()).use { input ->
+                input.bufferedReader().use { it.readText() }
             }
-            val file = ZipFile(path)
-            val stream = file.getInputStream(file.entries().nextElement())
-            val jsonString = stream.bufferedReader().use { it.readText() }
+
             val feature = Klaxon().parse<GovStopCollection>(jsonString)!!.features
             feature.forEach {
                 val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
@@ -123,7 +120,7 @@ class Utils {
                 )
                 govStops.add(
                     GovStop(
-                        it.minibusRouteStopProperties.stopId, mutableListOf(
+                        it.properties.stopId, mutableListOf(
                             crsCoordinate.getLatitude().roundCoordinate(),
                             crsCoordinate.getLongitude().roundCoordinate()
                         )
@@ -176,7 +173,7 @@ class Utils {
             }
         }
 
-        fun getArchivePath(): String = "$resourcesDir$ARCHIVE_NAME.tar" + if (compressToXZ) ".xz" else ".gz"
+        fun getArchivePath(): String = "$resourcesDir$ARCHIVE_NAME.tar" + if (COMPRESS_TO_XZ) ".xz" else ".gz"
 
         fun Double.roundCoordinate(): Double = this.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
 
@@ -198,7 +195,7 @@ class Utils {
         // 1. Remove ideographic space "\u3000"
         // 2. fullWidth characters to halfWidth
         // 3. No whitespace after "近" for Chinese locations (e.g. 近 富豪苑 to 近富豪苑)
-        // 4. Add whitespace after "近" for English locations (e.g. 近One Hennessy to 近 One Hennessy) except 近M+博物館
+        // 4. Add whitespace after "近" for English locations (e.g. 近One Hennessy to 近 One Hennessy) except for 近M+博物館
         // 5. Remove in-between whitespace (第 5 號 to 第5號)
         // 6. Trim preceding and trailing whitespace
         fun String.standardizeChiStopName(): String =
@@ -207,9 +204,7 @@ class Utils {
                 .replace(Regex("近\\s*\\p{IsHan}")) { a -> a.value.replace(Regex("\\s*"), "") }
                 .replace(Regex("近[A-Za-z]{3,}")) { x -> "${x.value[0]} ${x.value.removePrefix("近")}" }
                 .replace(Regex("\\p{IsHan}\\s*[A-Za-z0-9-]+\\s*\\p{IsHan}")) { x ->
-                    x.value.replace(
-                        Regex("\\s*"), ""
-                    )
+                    x.value.replace(Regex("\\s*"), "")
                 }.trim()
     }
 }

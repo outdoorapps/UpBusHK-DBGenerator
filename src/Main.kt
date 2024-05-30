@@ -1,3 +1,7 @@
+import Main.Companion.COMPRESS_TO_XZ
+import Main.Companion.dirs
+import Main.Companion.generateDatabase
+import Main.Companion.getBusCompanyData
 import data.*
 import helper.BusRouteHelper.Companion.getRoutes
 import helper.BusStopHelper
@@ -13,16 +17,16 @@ import util.Paths.Companion.BUS_FARE_PATH
 import util.Paths.Companion.BUS_FARE_URL
 import util.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
 import util.Paths.Companion.BUS_ROUTES_GEOJSON_URL
-import util.Paths.Companion.BUS_ROUTE_STOP_GEOJSON_PATH
+import util.Paths.Companion.BUS_ROUTE_STOP_JSON_PATH
 import util.Paths.Companion.BUS_ROUTE_STOP_URL
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_URL
 import util.Paths.Companion.DB_VERSION_EXPORT_PATH
-import util.Paths.Companion.MINIBUS_EXPORT_PATH
-import util.Paths.Companion.MINIBUS_ROUTES_GEOJSON_PATH
 import util.Paths.Companion.MINIBUS_ROUTES_GEOJSON_URL
-import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_PATH
-import util.Paths.Companion.MINIBUS_STOPS_GEOJSON_URL
+import util.Paths.Companion.MINIBUS_ROUTES_JSON_PATH
+import util.Paths.Companion.debugDir
+import util.Paths.Companion.generatedDir
+import util.Paths.Companion.govDataDir
 import util.Paths.Companion.resourcesDir
 import util.Utils
 import util.Utils.Companion.execute
@@ -36,30 +40,113 @@ import java.time.Instant
 import java.time.temporal.ChronoUnit
 import kotlin.time.measureTime
 
-// todo log // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
 // todo MTRB routes
+class Main {
+    companion object{
+        const val COMPRESS_TO_XZ = true
+        val dirs = listOf(resourcesDir, govDataDir, generatedDir, debugDir)
+        // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
 
-const val compressToXZ = true
-suspend fun main() {
+        fun getBusCompanyData(): CompanyBusData {
+            val companyBusData = CompanyBusData()
+            // 1. Get Routes
+            executeWithCount("Getting KMB routes...") {
+                val routes = getRoutes(Company.KMB)
+                companyBusData.companyBusRoutes.addAll(routes)
+                routes.size
+            }
+            executeWithCount("Getting CTB routes...") {
+                val routes = getRoutes(Company.CTB)
+                companyBusData.companyBusRoutes.addAll(routes)
+                routes.size
+            }
+            executeWithCount("Getting NLB routes...") {
+                val routes = getRoutes(Company.NLB)
+                companyBusData.companyBusRoutes.addAll(routes)
+                routes.size
+            }
+
+            // 2. Get Stops
+            val busStopHelper = BusStopHelper()
+            executeWithCount("Getting KMB stops...") {
+                val stops = busStopHelper.getKmbStops()
+                companyBusData.busStops.addAll(stops)
+                stops.size
+            }
+            executeWithCount("Getting CTB stops...") {
+                val stops = busStopHelper.getCtbStops(companyBusData.companyBusRoutes)
+                companyBusData.busStops.addAll(stops)
+                stops.size
+            }
+            executeWithCount("Getting NLB stops...") {
+                val stops = busStopHelper.getNlbStops(companyBusData.companyBusRoutes)
+                companyBusData.busStops.addAll(stops)
+                stops.size
+            }
+            busStopHelper.validateStops(companyBusData)
+
+            // 3. Patch bus company data
+            execute("Patching bus company data...") {
+                patchRoutes(companyBusData.companyBusRoutes)
+                patchStops(companyBusData.busStops)
+            }
+
+            // 4. Write bus company data
+            execute("Writing bus company data \"$BUS_COMPANY_DATA_EXPORT_PATH\"...") {
+                writeToGZ(companyBusData.toJson(), BUS_COMPANY_DATA_EXPORT_PATH)
+            }
+            return companyBusData
+        }
+
+        fun generateDatabase(busRoutes: List<BusRoute>, busStops: List<BusStop>, minibusData: MinibusData): Database {
+            lateinit var stops: List<BusStop>
+            execute("Rounding coordinate...") {
+                stops = busStops.map {
+                    val lat = it.coordinate[0].roundCoordinate()
+                    val long = it.coordinate[1].roundCoordinate()
+                    it.copy(coordinate = mutableListOf(lat, long))
+                }
+            }
+
+            val version = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
+            return Database(
+                version = version,
+                busRoutes = busRoutes,
+                busStops = stops,
+                minibusRoutes = minibusData.minibusRoutes,
+                minibusStops = minibusData.minibusStops
+            )
+        }
+    }
+}
+
+fun main() {
     BasicConfigurator.configure()
+    dirs.forEach {
+        val dir = File(it)
+        if (!dir.exists()) dir.mkdir()
+    }
+
     val t = measureTime {
         // I. Build routes and stops data
         val companyBusData = getBusCompanyData()
-        val minibusData = getMinibusData()
+        lateinit var minibusData: MinibusData
+        execute("Getting minibus data...", printOnNextLine = true) {
+            minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = false)
+        }
 
         // II. Download Government data files
         downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
         downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
-        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
         downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
-        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_GEOJSON_PATH) //todo parse and get full fare
-        downloadIgnoreCertificate(MINIBUS_STOPS_GEOJSON_URL, MINIBUS_STOPS_GEOJSON_PATH)
+        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
 
         // III. Parse government data
-        val govBusDataParser = GovBusDataParser(loadExistingData = false, exportToFile = true)
+        val govBusData = GovDataParser.getGovBusData(loadExistingData = false, exportToFile = true)
 
         // IV. Match company routes with government record
-        val routeMatcher = RouteMatcher(companyBusData, govBusDataParser.govBusData)
+        val routeMatcher = RouteMatcher(companyBusData, govBusData)
 
         // IV. Match company routes with government tracks record
         execute("Parsing trackInfo...", true) {
@@ -90,7 +177,7 @@ suspend fun main() {
                 writeSeparatePathFiles = false
             )
         }
-        Utils.writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
+        Utils.writeToArchive(intermediates, compressToXZ = COMPRESS_TO_XZ, deleteSource = true)
 
         execute("Writing version file \"${DB_VERSION_EXPORT_PATH}\"...") {
             val out = FileOutputStream(DB_VERSION_EXPORT_PATH)
@@ -103,89 +190,4 @@ suspend fun main() {
         //todo upload(File(getArchivePath()), database.version)
     }
     println("Finished all tasks in $t")
-}
-
-fun getBusCompanyData(): CompanyBusData {
-    val companyBusData = CompanyBusData()
-    // 1. Get Routes
-    executeWithCount("Getting KMB routes...") {
-        val routes = getRoutes(Company.KMB)
-        companyBusData.companyBusRoutes.addAll(routes)
-        routes.size
-    }
-    executeWithCount("Getting CTB routes...") {
-        val routes = getRoutes(Company.CTB)
-        companyBusData.companyBusRoutes.addAll(routes)
-        routes.size
-    }
-    executeWithCount("Getting NLB routes...") {
-        val routes = getRoutes(Company.NLB)
-        companyBusData.companyBusRoutes.addAll(routes)
-        routes.size
-    }
-
-    // 2. Get Stops
-    val busStopHelper = BusStopHelper()
-    executeWithCount("Getting KMB stops...") {
-        val stops = busStopHelper.getKmbStops()
-        companyBusData.busStops.addAll(stops)
-        stops.size
-    }
-    executeWithCount("Getting CTB stops...") {
-        val stops = busStopHelper.getCtbStops(companyBusData.companyBusRoutes)
-        companyBusData.busStops.addAll(stops)
-        stops.size
-    }
-    executeWithCount("Getting NLB stops...") {
-        val stops = busStopHelper.getNlbStops(companyBusData.companyBusRoutes)
-        companyBusData.busStops.addAll(stops)
-        stops.size
-    }
-    busStopHelper.validateStops(companyBusData)
-
-    // 3. Patch bus company data
-    execute("Patching bus company data...") {
-        patchRoutes(companyBusData.companyBusRoutes)
-        patchStops(companyBusData.busStops)
-    }
-
-    // 4. Write bus company data
-    execute("Writing bus company data \"$BUS_COMPANY_DATA_EXPORT_PATH\"...") {
-        val dir = File(resourcesDir)
-        if (!dir.exists()) dir.mkdir()
-        writeToGZ(companyBusData.toJson(), BUS_COMPANY_DATA_EXPORT_PATH)
-    }
-    return companyBusData
-}
-
-fun getMinibusData(): MinibusData {
-    lateinit var minibusData: MinibusData
-    execute("Getting minibus data...", printOnNextLine = true) {
-        minibusData = MinibusHelper().getMinibusData()
-    }
-
-    execute("Writing minibus data \"$MINIBUS_EXPORT_PATH\"...") {
-        writeToGZ(minibusData.toJson(), MINIBUS_EXPORT_PATH)
-    }
-    return minibusData
-}
-
-fun generateDatabase(busRoutes: List<BusRoute>, busStops: List<BusStop>, minibusData: MinibusData): Database {
-    lateinit var stops: List<BusStop>
-    execute("Rounding coordinate...") {
-        stops = busStops.map {
-            val lat = it.coordinate[0].roundCoordinate()
-            val long = it.coordinate[1].roundCoordinate()
-            it.copy(coordinate = mutableListOf(lat, long))
-        }
-    }
-
-    val version = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
-    return Database(
-        version = version,
-        busRoutes = busRoutes,
-        busStops = stops,
-        minibusRoutes = minibusData.minibusRoutes,
-        minibusStops = minibusData.minibusStops
-    )
 }

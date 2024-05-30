@@ -16,7 +16,6 @@ import util.Paths.Companion.debugDir
 import util.RamerDouglasPeucker.Companion.simplify
 import util.Utils.Companion.execute
 import util.Utils.Companion.roundCoordinate
-import java.io.File
 import java.io.FileOutputStream
 import java.io.OutputStreamWriter
 import java.io.Writer
@@ -41,7 +40,6 @@ class TrackParser {
         ) {
             if (parsePaths) {
                 if (writeSeparatePathFiles) {
-                    File(debugDir).mkdir()
                     parseGovTrackData(exportTrackInfoToFile, true, null, pathIDsToWrite, true)
                 } else {
                     FileOutputStream(DB_PATHS_EXPORT_PATH).use {

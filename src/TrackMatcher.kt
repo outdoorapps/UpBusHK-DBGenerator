@@ -1,3 +1,5 @@
+import Main.Companion.COMPRESS_TO_XZ
+import Main.Companion.generateDatabase
 import com.beust.klaxon.Klaxon
 import data.*
 import util.Company
@@ -5,14 +7,14 @@ import util.Paths
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
-import util.Paths.Companion.MINIBUS_EXPORT_PATH
+import util.Paths.Companion.MINIBUS_DATA_EXPORT_PATH
 import util.Paths.Companion.TRACK_INFO_EXPORT_PATH
 import util.TransportType
 import util.Utils
 import util.Utils.Companion.execute
 import util.Utils.Companion.intermediates
 import util.Utils.Companion.loadCompanyBusData
-import util.Utils.Companion.loadGovStop
+import util.Utils.Companion.loadGovBusStops
 import util.Utils.Companion.writeToArchive
 import util.Utils.Companion.writeToJsonFile
 import java.io.File
@@ -36,7 +38,7 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
 
         execute("Initializing data for TrackMatcher...") {
             companyBusDataTemp = companyBusData ?: loadCompanyBusData()
-            govStopsTemp = govStops ?: loadGovStop(TransportType.BUS)
+            govStopsTemp = govStops ?: loadGovBusStops()
 
             val file = File(TRACK_INFO_EXPORT_PATH)
             file.inputStream().use { input ->
@@ -123,10 +125,9 @@ fun main() {
     val companyBusData = CompanyBusData()
     execute("Loading saved bus company data...") {
         val dbFile = File(BUS_COMPANY_DATA_EXPORT_PATH)
-        var jsonString: String
-        dbFile.inputStream().use { input ->
+        val jsonString = dbFile.inputStream().use { input ->
             GZIPInputStream(input).use { gzInput ->
-                jsonString = gzInput.bufferedReader().use { it.readText() }
+                gzInput.bufferedReader().use { it.readText() }
             }
         }
         val data = Klaxon().parse<CompanyBusData>(jsonString)
@@ -138,7 +139,7 @@ fun main() {
 
     lateinit var minibusData: MinibusData
     execute("Loading saved minibus data...") {
-        val dbFile = File(MINIBUS_EXPORT_PATH)
+        val dbFile = File(MINIBUS_DATA_EXPORT_PATH)
         var jsonString: String
         dbFile.inputStream().use { input ->
             GZIPInputStream(input).use { gzInput ->
@@ -147,8 +148,8 @@ fun main() {
         }
         minibusData = Klaxon().parse<MinibusData>(jsonString)!!
     }
-    val govBusDataParser = GovBusDataParser(loadExistingData = true, exportToFile = false)
-    val routeMatcher = RouteMatcher(companyBusData, govBusDataParser.govBusData)
+    val govBusData = GovDataParser.getGovBusData(loadExistingData = true, exportToFile = false)
+    val routeMatcher = RouteMatcher(companyBusData, govBusData)
     val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
     val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
 
@@ -167,7 +168,7 @@ fun main() {
         )
     }
 
-    writeToArchive(intermediates, compressToXZ = compressToXZ, deleteSource = true)
+    writeToArchive(intermediates, compressToXZ = COMPRESS_TO_XZ, deleteSource = true)
 
     execute("Writing version file \"${Paths.DB_VERSION_EXPORT_PATH}\"...") {
         val out = FileOutputStream(Paths.DB_VERSION_EXPORT_PATH)

@@ -282,10 +282,9 @@ fun main() {
     val companyBusData = CompanyBusData()
     execute("Loading saved bus company data...") {
         val dbFile = File(BUS_COMPANY_DATA_EXPORT_PATH)
-        var jsonString: String
-        dbFile.inputStream().use { input ->
+        val jsonString = dbFile.inputStream().use { input ->
             GZIPInputStream(input).use { gzInput ->
-                jsonString = gzInput.bufferedReader().use { it.readText() }
+                gzInput.bufferedReader().use { it.readText() }
             }
         }
         val data = Klaxon().parse<CompanyBusData>(jsonString)
@@ -295,8 +294,8 @@ fun main() {
         }
     }
 
-    val govBusDataParser = GovBusDataParser(loadExistingData = true, exportToFile = true)
-    val routeMatcher = RouteMatcher(companyBusData, govBusDataParser.govBusData)
+    val govBusData = GovDataParser.getGovBusData(loadExistingData = true, exportToFile = true)
+    val routeMatcher = RouteMatcher(companyBusData, govBusData)
     val companyGovBusRouteMap = routeMatcher.getCompanyGovBusRouteMap()
     val companyBusRouteWithMatchCount = companyGovBusRouteMap.filter { (_, v) -> v != null }.size
     val companyBusRouteWithoutMatch = companyGovBusRouteMap.filter { (_, v) -> v == null }.size

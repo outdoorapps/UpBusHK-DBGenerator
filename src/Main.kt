@@ -1,7 +1,7 @@
-import Main.Companion.COMPRESS_TO_XZ
 import Main.Companion.dirs
 import Main.Companion.generateDatabase
 import Main.Companion.getBusCompanyData
+import Uploader.Companion.upload
 import data.*
 import helper.BusRouteHelper.Companion.getRoutes
 import helper.BusStopHelper
@@ -21,7 +21,6 @@ import util.Paths.Companion.BUS_ROUTE_STOP_JSON_PATH
 import util.Paths.Companion.BUS_ROUTE_STOP_URL
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_URL
-import util.Paths.Companion.DB_VERSION_EXPORT_PATH
 import util.Paths.Companion.MINIBUS_ROUTES_GEOJSON_URL
 import util.Paths.Companion.MINIBUS_ROUTES_JSON_PATH
 import util.Paths.Companion.debugDir
@@ -31,19 +30,21 @@ import util.Paths.Companion.resourcesDir
 import util.Utils
 import util.Utils.Companion.execute
 import util.Utils.Companion.executeWithCount
+import util.Utils.Companion.generateVersionNumber
+import util.Utils.Companion.getDatabaseFile
 import util.Utils.Companion.intermediates
 import util.Utils.Companion.roundCoordinate
 import util.Utils.Companion.writeToGZ
 import java.io.File
-import java.io.FileOutputStream
-import java.time.Instant
-import java.time.temporal.ChronoUnit
 import kotlin.time.measureTime
+
+const val compressToXZ = true
+const val minAppVersion = "0.9.0" // *Updated every time with breaking changes
 
 // todo MTRB routes
 class Main {
     companion object {
-        const val COMPRESS_TO_XZ = true
+
         val dirs = listOf(resourcesDir, govDataDir, generatedDir, debugDir)
         // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
 
@@ -108,9 +109,8 @@ class Main {
                 }
             }
 
-            val version = Instant.now().truncatedTo(ChronoUnit.SECONDS).toString()
             return Database(
-                version = version,
+                version = generateVersionNumber(),
                 busRoutes = busRoutes,
                 busStops = stops,
                 minibusRoutes = minibusData.minibusRoutes,
@@ -164,7 +164,7 @@ fun main() {
             Utils.writeToJsonFile(database.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
         }
 
-        execute("Writing paths \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
+        execute("Writing tracks \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
             val pathIDs = mutableSetOf<Int>()
             database.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
             TrackParser.parseFile(
@@ -174,17 +174,18 @@ fun main() {
                 writeSeparatePathFiles = false
             )
         }
-        Utils.writeToArchive(intermediates, compressToXZ = COMPRESS_TO_XZ, deleteSource = true)
 
-        execute("Writing version file \"${DB_VERSION_EXPORT_PATH}\"...") {
-            val out = FileOutputStream(DB_VERSION_EXPORT_PATH)
-            out.use {
-                it.write(database.version.toByteArray())
-            }
-        }
+        Utils.writeToArchive(
+            files = intermediates, version = database.version, compressToXZ = compressToXZ, deleteSource = true
+        )
 
         // VI. Upload to Firebase and marked changes
-        //todo upload(File(getArchivePath()), database.version)
+        val dbFile = getDatabaseFile()
+        if (dbFile != null) {
+            upload(dbFile, database.version)
+        } else {
+            println("Database file not found, nothing is uploaded")
+        }
     }
     println("Finished all tasks in $t")
 }

@@ -31,8 +31,7 @@ class Paths {
 
         val DB_ROUTES_STOPS_EXPORT_PATH = "${generatedDir}DB_routes-and-stops.json"
         val DB_PATHS_EXPORT_PATH = "${generatedDir}DB_tracks.json"
-        val DB_VERSION_EXPORT_PATH = "${resourcesDir}UpBusHK-DB-version.txt" //todo remove
 
-        const val ARCHIVE_NAME = "UpBusHK-DB"
+        const val DATABASE_NAME = "UpBusHK-DB"
     }
 }

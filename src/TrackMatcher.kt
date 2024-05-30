@@ -1,9 +1,7 @@
-import Main.Companion.COMPRESS_TO_XZ
 import Main.Companion.generateDatabase
 import com.beust.klaxon.Klaxon
 import data.*
 import util.Company
-import util.Paths
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
@@ -17,7 +15,6 @@ import util.Utils.Companion.loadGovBusStops
 import util.Utils.Companion.writeToArchive
 import util.Utils.Companion.writeToJsonFile
 import java.io.File
-import java.io.FileOutputStream
 import java.util.zip.GZIPInputStream
 
 // Matches bus company data and government bus track data
@@ -166,13 +163,7 @@ fun main() {
             exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )
     }
-
-    writeToArchive(intermediates, compressToXZ = COMPRESS_TO_XZ, deleteSource = true)
-
-    execute("Writing version file \"${Paths.DB_VERSION_EXPORT_PATH}\"...") {
-        val out = FileOutputStream(Paths.DB_VERSION_EXPORT_PATH)
-        out.use {
-            it.write(database.version.toByteArray())
-        }
-    }
+    writeToArchive(
+        files = intermediates, version = database.version, compressToXZ = compressToXZ, deleteSource = true
+    )
 }

@@ -1,10 +1,10 @@
 package util
 
-import Main.Companion.COMPRESS_TO_XZ
 import com.beust.klaxon.Klaxon
 import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumber
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
+import compressToXZ
 import data.CompanyBusData
 import data.GovStop
 import json_model.GovStopCollection
@@ -12,14 +12,18 @@ import org.apache.commons.compress.archivers.tar.TarArchiveEntry
 import org.apache.commons.compress.archivers.tar.TarArchiveOutputStream
 import org.tukaani.xz.LZMA2Options
 import org.tukaani.xz.XZOutputStream
-import util.Paths.Companion.ARCHIVE_NAME
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
 import util.Paths.Companion.BUS_STOPS_GEOJSON_PATH
+import util.Paths.Companion.DATABASE_NAME
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import util.Paths.Companion.resourcesDir
 import java.io.*
 import java.math.RoundingMode
+import java.time.Instant
+import java.time.ZoneOffset
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 import java.util.zip.ZipFile
@@ -31,6 +35,10 @@ import kotlin.time.toDuration
 
 class Utils {
     companion object {
+        private val dateTimeFormatter = DateTimeFormatter.ofPattern("YYYYMMddHHmmss'Z'").withZone(ZoneOffset.UTC)
+        private val dbExtension = if (compressToXZ) ".tar.xz" else ".tar.gz"
+        private val dbNameRegex = "${DATABASE_NAME}_[0-9]{14}Z$dbExtension".toRegex()
+
         val intermediates = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
 
         fun printPercentage(currentCount: Int, totalCount: Int, startTimeInMillis: Long) {
@@ -131,9 +139,11 @@ class Utils {
         fun getCompanies(companyCode: String): Set<Company> =
             companyCode.split("+").map { Company.fromValue(it) }.toSet()
 
-        fun writeToArchive(files: List<String>, compressToXZ: Boolean, deleteSource: Boolean) {
+        fun generateVersionNumber(): String = dateTimeFormatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))
+
+        fun writeToArchive(files: List<String>, version: String, compressToXZ: Boolean, deleteSource: Boolean) {
             execute("Compressing files to archive...") {
-                val path = getArchivePath()
+                val path = getDatabasePath(version)
                 val output = FileOutputStream(path)
                 val compressionStream =
                     if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
@@ -170,7 +180,12 @@ class Utils {
             }
         }
 
-        fun getArchivePath(): String = "$resourcesDir$ARCHIVE_NAME.tar" + if (COMPRESS_TO_XZ) ".xz" else ".gz"
+        private fun getDatabasePath(version: String): String = "$resourcesDir${DATABASE_NAME}_$version$dbExtension"
+
+        fun getDatabaseFile(): File? = File(resourcesDir).listFiles()?.find { it.name.matches(dbNameRegex) }
+
+        fun extractVersionNumber(databaseFile: File) =
+            databaseFile.name.replace("${DATABASE_NAME}_", "").replace(dbExtension, "")
 
         fun Double.roundCoordinate(): Double = this.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
 

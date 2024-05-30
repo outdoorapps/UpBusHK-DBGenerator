@@ -69,7 +69,7 @@ class MinibusHelper {
             }
             minibusStops.forEach { stopIDsNeededInfo.remove(it.stopId) }
         }
-        println("Minibus stops on file: ${minibusStops.size}, not on file: ${stopIDsNeededInfo.size}")
+        println("- Minibus stops on file: ${minibusStops.size}, not on file: ${stopIDsNeededInfo.size}")
 
         // 5. Request stops info not on file
         if (stopIDsNeededInfo.isNotEmpty()) {
@@ -77,7 +77,8 @@ class MinibusHelper {
                 minibusStops.addAll(getStops(stopIDsNeededInfo))
             }
         }
-        println("Total minibus routes: ${minibusRoutes.size}, total minibus stops: ${minibusStops.size}")
+        minibusStops.sortBy { it.stopId }
+        println("- Total minibus routes: ${minibusRoutes.size}, total minibus stops: ${minibusStops.size}")
 
         // 6. Export to file if needed
         val minibusData = MinibusData(minibusRoutes, minibusStops)
@@ -104,7 +105,7 @@ class MinibusHelper {
             routesInRegion.forEach { number ->
                 getAsync("$MINIBUS_ROUTE_URL/${region.value}/$number", onFailure = {
                     countDownLatch.countDown()
-                    println("Request minibus info for $region $number failed")
+                    println("- Request minibus info for $region $number failed")
                 }, onResponse = {
                     val data = MinibusRouteInfoResponse.fromJson(it)?.data
                     if (!data.isNullOrEmpty()) {
@@ -149,7 +150,7 @@ class MinibusHelper {
         }
         countDownLatch.await()
         list.sortWith(compareBy({ it.number }, { it.bound }, { it.region }))
-        println("Minibus routes added (inbound & outbound): ${list.size}")
+        println("- Minibus routes added (inbound & outbound): ${list.size}")
         return list
     }
 
@@ -167,7 +168,6 @@ class MinibusHelper {
                 println("Restarting...")
             }
         } while (this.stopIDs.isNotEmpty())
-        list.sortBy { it.stopId }
         return list
     }
 

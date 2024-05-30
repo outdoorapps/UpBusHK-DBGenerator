@@ -42,7 +42,7 @@ import kotlin.time.measureTime
 
 // todo MTRB routes
 class Main {
-    companion object{
+    companion object {
         const val COMPRESS_TO_XZ = true
         val dirs = listOf(resourcesDir, govDataDir, generatedDir, debugDir)
         // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
@@ -100,7 +100,7 @@ class Main {
 
         fun generateDatabase(busRoutes: List<BusRoute>, busStops: List<BusStop>, minibusData: MinibusData): Database {
             lateinit var stops: List<BusStop>
-            execute("Rounding coordinate...") {
+            execute("Rounding coordinates...") {
                 stops = busStops.map {
                     val lat = it.coordinate[0].roundCoordinate()
                     val long = it.coordinate[1].roundCoordinate()
@@ -128,21 +128,18 @@ fun main() {
     }
 
     val t = measureTime {
-        // I. Build routes and stops data
-        val companyBusData = getBusCompanyData()
-        lateinit var minibusData: MinibusData
-        execute("Getting minibus data...", printOnNextLine = true) {
-            minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = false)
-        }
-
-        // II. Download Government data files
+        // I. Download Government data files
         downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
         downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
         downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
         downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
         downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
 
-        // III. Parse government data
+        // II. Build bus (company) and minibus (online and government) data
+        val companyBusData = getBusCompanyData()
+        val minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = false)
+
+        // III. Parse government bus data
         val govBusData = GovDataParser.getGovBusData(loadExistingData = false, exportToFile = true)
 
         // IV. Match company routes with government record

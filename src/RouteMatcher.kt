@@ -80,7 +80,7 @@ class RouteMatcher(
             val nlbRouteCount = busRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.NLB) }.size
             val jointRouteCount = busRoutes.filter { it.companies.size > 1 }.size
             println(
-                "Route count - KMB:${kmbRouteCount}, LWB:${lwbRouteCount}, CTB:${ctbRouteCount}, NLB:${nlbRouteCount}, Joint routes:${jointRouteCount}"
+                "- Route count - KMB:${kmbRouteCount} LWB:${lwbRouteCount} CTB:${ctbRouteCount} NLB:${nlbRouteCount} Joint:${jointRouteCount}"
             )
         }
 

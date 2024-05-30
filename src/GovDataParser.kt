@@ -83,7 +83,7 @@ class GovDataParser {
                 input.bufferedReader().use { it.readText() }
             }
             val busFareCollection = kotlinXmlMapper.readValue<BusFareCollection>(xml)
-            println("${busFareCollection.list.size} bus fare entries parsed")
+            println("- ${busFareCollection.list.size} bus fare entries parsed")
 
             // RouteID to RouteSeq to StopSeq to fare
             val busFareMap = mutableMapOf<Int, MutableMap<Int, MutableMap<Int, Double>>>()
@@ -135,7 +135,7 @@ class GovDataParser {
                                                     }
                                                     t = t.plus(time)
                                                     if (govRouteStops.size % 5000 == 0) {
-                                                        println("${govRouteStops.size} route-stops parsed in $t")
+                                                        println("- ${govRouteStops.size} route-stops parsed in $t")
                                                     }
                                                 }
                                             }
@@ -146,7 +146,7 @@ class GovDataParser {
                         }
                     }
                 }
-                println("${govRouteStops.size} ${transportType.name.lowercase()} route-stops parsed")
+                println("- ${govRouteStops.size} ${transportType.name.lowercase()} route-stops parsed")
             }
             return govRouteStops
         }

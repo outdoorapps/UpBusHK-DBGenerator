@@ -1,7 +1,7 @@
 package util
 
-import data.CompanyBusRoute
 import data.BusStop
+import data.CompanyBusRoute
 
 class Patch {
     companion object {
@@ -9,6 +9,8 @@ class Patch {
         // "E3B8D0FF5C269463" <- belong to an obsolete route A41,O,serviceType=5
         // "3236114A2BB68ACC" <- belong to obsolete routes A41,I,serviceType=5,6
         // "93BA278DCD263EF8" <- belong to obsolete routes A41,I,serviceType=5,6
+        val accountedStops =
+            listOf("B7A9E1A243516288", "E3B8D0FF5C269463", "3236114A2BB68ACC", "93BA278DCD263EF8")
         private val stopPatchMap = mapOf("B7A9E1A243516288" to "E5421509D8FC00AF")
 
         fun patchStops(busStops: MutableList<BusStop>) {

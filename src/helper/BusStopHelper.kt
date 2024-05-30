@@ -17,6 +17,7 @@ import util.APIs.Companion.KMB_ALL_STOPS
 import util.Company
 import util.HttpUtils.Companion.get
 import util.HttpUtils.Companion.getAsync
+import util.Patch.Companion.accountedStops
 import util.Utils
 import java.util.concurrent.CountDownLatch
 
@@ -175,8 +176,16 @@ class BusStopHelper {
                 }
             }
         }
-        if (noMatchStops.size > 0) println("Stops in bus routes but not found in the database: $noMatchStops")
-        else println("Success")
+
+        val unaccountedStops = mutableListOf<String>()
+        if (noMatchStops.isNotEmpty()) {
+            noMatchStops.forEach { if (!accountedStops.contains(it)) unaccountedStops.add(it) }
+        }
+        if (unaccountedStops.isNotEmpty()) {
+            println("Stops that are not in the database and are unaccounted for: $unaccountedStops")
+        } else {
+            println("Success")
+        }
         return noMatchStops
     }
 }

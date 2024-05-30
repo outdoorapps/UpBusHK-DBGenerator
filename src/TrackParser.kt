@@ -147,12 +147,12 @@ class TrackParser {
             }
             if (pathFOS != null) {
                 println("- $pathsWritten tracks written")
-                println("Tracks with >100 coordinates:${pathSizeMap.values.filter { it > 100 }.size}")
-                println("Tracks with >500 coordinates:${pathSizeMap.values.filter { it > 500 }.size}")
-                println("Tracks with >1000 coordinates:${pathSizeMap.values.filter { it > 1000 }.size}")
-                println("Tracks with >2000 coordinates:${pathSizeMap.values.filter { it > 2000 }.size}")
-                println("Tracks with >3000 coordinates:${pathSizeMap.values.filter { it > 3000 }.size}")
-                println("Max:${pathSizeMap.values.maxOrNull()}, Min:${pathSizeMap.values.minOrNull()}")
+                println("-- Tracks with >100 coordinates:${pathSizeMap.values.filter { it > 100 }.size}")
+                println("-- Tracks with >500 coordinates:${pathSizeMap.values.filter { it > 500 }.size}")
+                println("-- Tracks with >1000 coordinates:${pathSizeMap.values.filter { it > 1000 }.size}")
+                println("-- Tracks with >2000 coordinates:${pathSizeMap.values.filter { it > 2000 }.size}")
+                println("-- Tracks with >3000 coordinates:${pathSizeMap.values.filter { it > 3000 }.size}")
+                println("-- Max:${pathSizeMap.values.maxOrNull()}, Min:${pathSizeMap.values.minOrNull()}")
             }
 
             if (parseTrackInfo) {

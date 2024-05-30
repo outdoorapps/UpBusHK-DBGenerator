@@ -60,7 +60,7 @@ class Utils {
             val t = measureTime {
                 count = action()
             }
-            println("added $count in $t")
+            println("- added $count in $t")
         }
 
         fun execute(description: String, printOnNextLine: Boolean = false, action: () -> Unit) {

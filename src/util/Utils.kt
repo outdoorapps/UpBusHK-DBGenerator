@@ -37,7 +37,7 @@ class Utils {
     companion object {
         private val dateTimeFormatter = DateTimeFormatter.ofPattern("YYYYMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC)
         private val dbExtension = if (compressToXZ) ".tar.xz" else ".tar.gz"
-        private val dbNameRegex = "${DATABASE_NAME}_[0-9]{14}Z$dbExtension".toRegex()
+        private val dbNameRegex = "${DATABASE_NAME}_[0-9]{8}T[0-9]{6}Z$dbExtension".toRegex()
 
         val intermediates = listOf(DB_ROUTES_STOPS_EXPORT_PATH, DB_PATHS_EXPORT_PATH)
 

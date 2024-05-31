@@ -39,7 +39,7 @@ import java.io.File
 import kotlin.time.measureTime
 
 const val compressToXZ = true
-const val minAppVersion = "0.9.0" // *Updated every time with breaking changes
+const val dbMinAppVersion = "0.9.0" // *Updated every time with breaking changes
 
 // todo MTRB routes
 class Main {

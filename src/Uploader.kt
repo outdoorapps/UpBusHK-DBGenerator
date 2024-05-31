@@ -21,7 +21,7 @@ class Uploader {
         private const val FIREBASE_CREDENTIALS = "secrets/upbushk-firebase-adminsdk-3obkp-773ff4b827.json"
         private const val DATABASE_URL = "https://upbushk-default-rtdb.asia-southeast1.firebasedatabase.app"
         private const val BUCKET_NAME = "upbushk.appspot.com"
-        private const val PUBLIC_RESOURCES_PATH = "public_resources"
+        private const val CLIENT_DATABASE_INFO_PATH = "public_resources/client_database"
 
         fun upload(databaseFile: File, databaseVersion: String) {
             val serviceAccount = FileInputStream(FIREBASE_CREDENTIALS)
@@ -54,11 +54,9 @@ class Uploader {
             }
 
             Utils.execute("Marking database update on Firebase...") {
-                val ref = FirebaseDatabase.getInstance().getReference(PUBLIC_RESOURCES_PATH)
-                // Deprecated value
-                // val version = mapOf("client_database_version" to clientDatabaseVersion)
-                val values = mapOf("database_version" to databaseVersion, "min_app_version" to minAppVersion)
-                val future = ref.setValueAsync(values)
+                val ref = FirebaseDatabase.getInstance().getReference(CLIENT_DATABASE_INFO_PATH)
+                val values = mapOf("version" to databaseVersion, "min_compatible_app_version" to dbMinAppVersion)
+                val future = ref.updateChildrenAsync(values)
                 try {
                     future.get(10, TimeUnit.SECONDS)
                 } catch (e: Exception) {

@@ -70,7 +70,9 @@ class RouteMatcher(
                     trackId = null,
                     fullFare = govBusRoute?.fullFare,
                     stopFareMap = stopFareMap,
-                    secondaryStops = secondaryStops
+                    stops = stopFareMap.keys.toList(),
+                    secondaryStops = secondaryStops,
+                    fares = stopFareMap.values.toList()
                 )
             }
 
@@ -106,7 +108,11 @@ class RouteMatcher(
                     if (altRoute != null) {
                         val generatedMap =
                             busRoute.stopFareMap.map { (stopId, _) -> stopId to altRoute.stopFareMap[stopId] }.toMap()
-                        newBusRoute = busRoute.copy(stopFareMap = generatedMap)
+                        newBusRoute = busRoute.copy(
+                            stopFareMap = generatedMap,
+                            stops = generatedMap.keys.toList(),
+                            fares = generatedMap.values.toList()
+                        )
                     }
                 }
             }
@@ -114,9 +120,8 @@ class RouteMatcher(
         }
     }
 
-    // If the first fare value is null, the map has not been populated
     private fun isStopFareMapPopulated(busRoute: BusRoute): Boolean =
-        busRoute.stopFareMap.values.toList().first() != null
+        busRoute.stopFareMap.values.any { it != null }
 
     fun getCompanyGovBusRouteMap(): Map<CompanyBusRoute, GovBusRoute?> {
         val companyGovRouteMap = mutableMapOf<CompanyBusRoute, GovBusRoute?>()

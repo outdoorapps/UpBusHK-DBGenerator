@@ -19,8 +19,10 @@ data class BusRoute(
     @Json(index = 11) val nlbRouteId: String?,
     @Json(index = 12) val trackId: Int?,
     @Json(index = 13) val fullFare: Double?,
-    @Json(index = 14) val stopFareMap: Map<String, Double?>,
-    @Json(index = 15) val secondaryStops: List<String>
+    @Json(ignored = true) val stopFareMap: Map<String, Double?>,
+    @Json(index = 14) val stops: List<String>,
+    @Json(index = 15) val secondaryStops: List<String>,
+    @Json(index = 16) val fares: List<Double?>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

@@ -35,7 +35,7 @@ import kotlin.time.toDuration
 
 class Utils {
     companion object {
-        private val dateTimeFormatter = DateTimeFormatter.ofPattern("YYYYMMddHHmmss'Z'").withZone(ZoneOffset.UTC)
+        private val dateTimeFormatter = DateTimeFormatter.ofPattern("YYYYMMdd'T'HHmmss'Z'").withZone(ZoneOffset.UTC)
         private val dbExtension = if (compressToXZ) ".tar.xz" else ".tar.gz"
         private val dbNameRegex = "${DATABASE_NAME}_[0-9]{14}Z$dbExtension".toRegex()
 

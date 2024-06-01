@@ -8,7 +8,8 @@ import com.google.firebase.FirebaseOptions
 import com.google.firebase.cloud.StorageClient
 import com.google.firebase.database.FirebaseDatabase
 import org.apache.log4j.BasicConfigurator
-import util.Utils
+import util.Utils.Companion.dbNameRegex
+import util.Utils.Companion.execute
 import util.Utils.Companion.extractVersionNumber
 import util.Utils.Companion.getDatabaseFile
 import java.io.File
@@ -43,32 +44,71 @@ class Uploader {
                 // changes before the request runs.
                 Storage.BlobWriteOption.generationMatch(bucket.storage.get(bucket.name, databaseFile.name).generation)
             }
-            Utils.execute("Uploading ${databaseFile.name}...") {
+
+            // 1. Upload
+            var uploadSucceeded = false
+            execute("Uploading ${databaseFile.name}...", printOnNextLine = true) {
                 try {
                     databaseFile.inputStream().use {
                         bucket.storage.createFrom(blobInfo, it, precondition)
                     }
+                    uploadSucceeded = true
                 } catch (e: Exception) {
                     println(e)
                 }
+                if (uploadSucceeded) println("- Upload ${databaseFile.name} succeeded")
             }
 
-            Utils.execute("Marking database update on Firebase...") {
-                val ref = FirebaseDatabase.getInstance().getReference(CLIENT_DATABASE_INFO_PATH)
-                val values = mapOf("version" to databaseVersion, "min_compatible_app_version" to dbMinAppVersion)
-                val future = ref.updateChildrenAsync(values)
-                try {
-                    future.get(10, TimeUnit.SECONDS)
-                } catch (e: Exception) {
-                    println("Marking database update on Firebase failed: $e")
+            // 2. Mark changes on realtime database
+            var markChangesSucceeded = false
+            if (uploadSucceeded) {
+                execute("Marking database update on Firebase...", printOnNextLine = true) {
+                    val ref = FirebaseDatabase.getInstance().getReference(CLIENT_DATABASE_INFO_PATH)
+                    val values = mapOf("version" to databaseVersion, "min_compatible_app_version" to dbMinAppVersion)
+                    val future = ref.updateChildrenAsync(values)
+                    try {
+                        future.get(10, TimeUnit.SECONDS)
+                        markChangesSucceeded = true
+                    } catch (e: Exception) {
+                        println("- Marking database update on Firebase failed: $e")
+                    }
+                    if (markChangesSucceeded) println("- Marking database update on Firebase succeeded")
                 }
             }
+
+            // 3. Remove old database files
+            var deleteSucceeded = false
+            if (uploadSucceeded && markChangesSucceeded) {
+                val filesToBeDeleted = mutableListOf<BlobId>()
+                bucket.storage.list(bucket.name).values.forEach {
+                    if (it.name.matches(dbNameRegex) && it.name != databaseFile.name) {
+                        filesToBeDeleted.add(it.blobId)
+                    }
+                }
+
+                if (filesToBeDeleted.isNotEmpty()) {
+                    println("Previous database files to be deleted:")
+                    filesToBeDeleted.forEach { println("- ${it.name}") }
+                    execute("Deleting previous database files from Firebase...", printOnNextLine = true) {
+                        try {
+                            bucket.storage.delete(filesToBeDeleted)
+                            deleteSucceeded = true
+                        } catch (e: Exception) {
+                            println(e)
+                        }
+                        if (deleteSucceeded) println("- Delete previous database files succeeded")
+                    }
+                } else {
+                    deleteSucceeded = true
+                }
+            }
+
+            if (uploadSucceeded && markChangesSucceeded && deleteSucceeded) println("All Firebase operations succeeded")
         }
     }
 }
 
 fun main() {
-    // todo select the latest version to upload and cleanup order versions
     BasicConfigurator.configure()
     val dbFile = getDatabaseFile()
     if (dbFile != null) {

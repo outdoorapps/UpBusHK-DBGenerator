@@ -164,6 +164,10 @@ fun main() {
         )
     }
     writeToArchive(
-        files = intermediates, version = database.version, compressToXZ = compressToXZ, deleteSource = true
+        files = intermediates,
+        version = database.version,
+        compressToXZ = compressToXZ,
+        deleteSource = true,
+        cleanUpPreviousVersion = false
     )
 }

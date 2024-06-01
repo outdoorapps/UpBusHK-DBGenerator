@@ -141,9 +141,16 @@ class Utils {
 
         fun generateVersionNumber(): String = dateTimeFormatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))
 
-        fun writeToArchive(files: List<String>, version: String, compressToXZ: Boolean, deleteSource: Boolean) {
+        fun writeToArchive(
+            files: List<String>,
+            version: String,
+            compressToXZ: Boolean,
+            deleteSource: Boolean,
+            cleanUpPreviousVersion: Boolean
+        ) {
+            val path = getDatabasePath(version)
+
             execute("Compressing files to archive...") {
-                val path = getDatabasePath(version)
                 val output = FileOutputStream(path)
                 val compressionStream =
                     if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
@@ -161,6 +168,13 @@ class Utils {
                 }
             }
             if (deleteSource) execute("Cleaning up intermediates...") { files.forEach { File(it).delete() } }
+
+            if (cleanUpPreviousVersion) {
+                execute("Cleaning up previous database versions") {
+                    val databaseFiles = getDatabaseFiles()
+                    databaseFiles.forEach { if (it.path != path) it.delete() }
+                }
+            }
         }
 
         fun writeToCSV(filePath: String, coordinates: List<List<Double>>) {
@@ -183,6 +197,11 @@ class Utils {
         private fun getDatabasePath(version: String): String = "$resourcesDir${DATABASE_NAME}_$version$dbExtension"
 
         fun getDatabaseFile(): File? = File(resourcesDir).listFiles()?.find { it.name.matches(dbNameRegex) }
+
+        private fun getDatabaseFiles(): List<File> {
+            val list = File(resourcesDir).listFiles()?.filter { it.name.matches(dbNameRegex) }?.toList()
+            return list ?: emptyList()
+        }
 
         fun extractVersionNumber(databaseFile: File) =
             databaseFile.name.replace("${DATABASE_NAME}_", "").replace(dbExtension, "")

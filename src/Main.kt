@@ -176,7 +176,11 @@ fun main() {
         }
 
         Utils.writeToArchive(
-            files = intermediates, version = database.version, compressToXZ = compressToXZ, deleteSource = true
+            files = intermediates,
+            version = database.version,
+            compressToXZ = compressToXZ,
+            deleteSource = true,
+            cleanUpPreviousVersion = true
         )
 
         // VI. Upload to Firebase and marked changes

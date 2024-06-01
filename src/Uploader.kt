@@ -68,6 +68,7 @@ class Uploader {
 }
 
 fun main() {
+    // todo select the latest version to upload and cleanup order versions
     BasicConfigurator.configure()
     val dbFile = getDatabaseFile()
     if (dbFile != null) {

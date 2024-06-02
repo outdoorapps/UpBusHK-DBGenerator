@@ -97,6 +97,10 @@ class GovDataParser {
                 val fareMap = busFareMap[fareItem.routeId]!![fareItem.routeSeq]!!
                 if (fareMap[fareItem.onSeq] == null) {
                     fareMap[fareItem.onSeq] = fareItem.fare
+                } else if(fareItem.fare > fareMap[fareItem.onSeq]!!) {
+                    fareMap[fareItem.onSeq] = fareItem.fare
+                    // todo include short-haul fare (partial fare refund scheme)
+                    // https://www.kmb.hk/scheme_shortdistance.html
                 }
             }
             // Sort by onSeq, i.e. stop sequence

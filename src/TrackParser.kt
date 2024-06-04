@@ -4,8 +4,8 @@ import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumb
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import data.BusTrack
 import data.Track
+import data.GovTrack
 import data.TrackInfo
 import json_model.CRS
 import json_model.CRSProperties
@@ -102,9 +102,9 @@ class TrackParser {
                                                         FileOutputStream("$debugDir${route.trackInfo.objectId}.json")
                                                     val simplifiedCoordinates =
                                                         simplify(multilineToCoordinates(route.multiLineString))
-                                                    val busTrack =
-                                                        BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
-                                                    out.use { out.write(busTrack.toJson().toByteArray()) }
+                                                    val track =
+                                                        Track(route.trackInfo.objectId, simplifiedCoordinates)
+                                                    out.use { out.write(track.toJson().toByteArray()) }
                                                     pathsWritten++
                                                     pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
                                                 } else {
@@ -114,9 +114,9 @@ class TrackParser {
                                                     ) {
                                                         val simplifiedCoordinates =
                                                             simplify(multilineToCoordinates(route.multiLineString))
-                                                        val busTrack =
-                                                            BusTrack(route.trackInfo.objectId, simplifiedCoordinates)
-                                                        pathFOS.write(busTrack.toJson().toByteArray())
+                                                        val track =
+                                                            Track(route.trackInfo.objectId, simplifiedCoordinates)
+                                                        pathFOS.write(track.toJson().toByteArray())
                                                         pathsWritten++
                                                         pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
 
@@ -167,7 +167,7 @@ class TrackParser {
         }
 
         @Suppress("ASSIGNED_BUT_NEVER_ACCESSED_VARIABLE", "UNUSED_VALUE")
-        private fun getMappedRoute(reader: JsonReader, ignorePath: Boolean): Track {
+        private fun getMappedRoute(reader: JsonReader, ignorePath: Boolean): GovTrack {
             var trackInfo: TrackInfo? = null
             var multiLineString: List<CrsCoordinate> = listOf()
             reader.beginObject {
@@ -191,7 +191,7 @@ class TrackParser {
                     }
                 }
             }
-            return Track(trackInfo!!, multiLineString)
+            return GovTrack(trackInfo!!, multiLineString)
         }
 
         private fun getPath(reader: JsonReader, isMultiLineString: Boolean, ignorePath: Boolean): List<CrsCoordinate> {

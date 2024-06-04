@@ -1,7 +1,7 @@
 package util
 
 import com.beust.klaxon.Klaxon
-import data.BusTrack
+import data.Track
 import mil.nga.sf.Point
 import mil.nga.sf.util.GeometryUtils.perpendicularDistance
 import util.Paths.Companion.debugDir
@@ -52,11 +52,11 @@ class RamerDouglasPeucker {
 fun main() {
     val num = 1339
     val file = File("$debugDir$num.json")
-    val busTrack = Klaxon().parse<BusTrack>(file.readText())!!
-    Utils.execute("Simplifying path - ${busTrack.coordinate.size} point...") {
-        val result = simplify(busTrack.coordinate)
+    val track = Klaxon().parse<Track>(file.readText())!!
+    Utils.execute("Simplifying path - ${track.coordinate.size} point...") {
+        val result = simplify(track.coordinate)
         writeToCSV("${debugDir}csv/$num.csv", result)
-        writeToCSV("${debugDir}csv/$num-ori.csv", busTrack.coordinate)
+        writeToCSV("${debugDir}csv/$num-ori.csv", track.coordinate)
         println(result.size)
     }
 }

@@ -34,6 +34,10 @@ class RouteMatcher(
             }
 
             val jointRouteMap = getJointRouteMap()
+            val map = getCompanyGovBusRouteMap()
+            val r8 = map.filterKeys { it.number == "R8" }
+            r8.forEach { println(it) }
+
             busRoutes = getCompanyGovBusRouteMap().map { (companyBusRoute, govBusRoute) ->
                 val companyCode = jointRouteCompanyCodeMap[companyBusRoute.number]
                 val companies = if (companyCode == null) {

@@ -20,7 +20,8 @@ class RouteMatcher(
         private val stopIdPatchMap: Map<String, Int> = mapOf("152" to 12728)
     }
 
-    private val jointRouteNumbers = mutableSetOf<String>()
+    // Number to company code
+    private val jointRouteCompanyCodeMap = mutableMapOf<String, String>()
     val busRoutes: List<BusRoute>
 
     init {
@@ -28,12 +29,17 @@ class RouteMatcher(
         execute("Merging bus routes...", printOnNextLine = true) {
             govBusData.govBusRoutes.forEach {
                 if (it.companyCode.contains("+")) {
-                    jointRouteNumbers.add(it.routeNameE)
+                    jointRouteCompanyCodeMap[it.routeNameE] = it.companyCode
                 }
             }
+
             val jointRouteMap = getJointRouteMap()
+            val map = getCompanyGovBusRouteMap()
+            val r8 = map.filterKeys { it.number == "R8" }
+            r8.forEach { println(it) }
+
             busRoutes = getCompanyGovBusRouteMap().map { (companyBusRoute, govBusRoute) ->
-                val companyCode = govBusRoute?.companyCode
+                val companyCode = jointRouteCompanyCodeMap[companyBusRoute.number]
                 val companies = if (companyCode == null) {
                     setOf(companyBusRoute.company)
                 } else {
@@ -59,6 +65,7 @@ class RouteMatcher(
                     companies = companies,
                     number = companyBusRoute.number,
                     bound = companyBusRoute.bound,
+                    secondaryBound = secondaryRoute?.bound,
                     originEn = companyBusRoute.originEn,
                     originChiT = companyBusRoute.originChiT,
                     originChiS = companyBusRoute.originChiS,
@@ -120,8 +127,7 @@ class RouteMatcher(
         }
     }
 
-    private fun isStopFareMapPopulated(busRoute: BusRoute): Boolean =
-        busRoute.stopFareMap.values.any { it != null }
+    private fun isStopFareMapPopulated(busRoute: BusRoute): Boolean = busRoute.stopFareMap.values.any { it != null }
 
     fun getCompanyGovBusRouteMap(): Map<CompanyBusRoute, GovBusRoute?> {
         val companyGovRouteMap = mutableMapOf<CompanyBusRoute, GovBusRoute?>()
@@ -188,7 +194,7 @@ class RouteMatcher(
         }
 
     private fun isJointRoute(companyBusRoute: CompanyBusRoute): Boolean =
-        jointRouteNumbers.contains(companyBusRoute.number)
+        jointRouteCompanyCodeMap.contains(companyBusRoute.number)
 
     private fun isCompanyGovRouteBoundMatch(
         companyBusRoute: CompanyBusRoute, govBusRoute: GovBusRoute, errorDistance: Double, printValues: Boolean = false
@@ -241,8 +247,8 @@ class RouteMatcher(
 
     private fun getSecondaryStops(primaryRoute: CompanyBusRoute, secondaryRoute: CompanyBusRoute): List<String> {
         val secondaryStops = mutableListOf<String>()
-        primaryRoute.stops.forEach { refStopId ->
-            val refStop = companyBusData.busStops.find { x -> x.stopId == refStopId }
+        primaryRoute.stops.forEach { primaryStopId ->
+            val primaryStop = companyBusData.busStops.find { x -> x.stopId == primaryStopId }
             // Search a sublist of remaining stops
             val startIndex = if (secondaryStops.isEmpty()) {
                 0
@@ -251,8 +257,8 @@ class RouteMatcher(
                 if (index == secondaryRoute.stops.size) index else index + 1
             }
 
-            val matchingStopId = if (refStop != null) {
-                getClosestStopID(refStop, secondaryRoute.stops.subList(startIndex, secondaryRoute.stops.size))
+            val matchingStopId = if (primaryStop != null) {
+                getClosestStopID(primaryStop, secondaryRoute.stops.subList(startIndex, secondaryRoute.stops.size))
             } else null
             secondaryStops.add(matchingStopId ?: "")
         }

@@ -77,6 +77,7 @@ class GovDataParser {
             }
         }
 
+        // Map of GovRouteID -> RouteSeq -> Map<StopSeq to fare>
         private fun parseBusFareMap(): Map<Int, Map<Int, Map<Int, Double>>> {
             val file = File(BUS_FARE_PATH)
             val xml = file.inputStream().use { input ->
@@ -97,7 +98,7 @@ class GovDataParser {
                 val fareMap = busFareMap[fareItem.routeId]!![fareItem.routeSeq]!!
                 if (fareMap[fareItem.onSeq] == null) {
                     fareMap[fareItem.onSeq] = fareItem.fare
-                } else if(fareItem.fare > fareMap[fareItem.onSeq]!!) {
+                } else if (fareItem.fare > fareMap[fareItem.onSeq]!!) {
                     fareMap[fareItem.onSeq] = fareItem.fare
                     // todo include short-haul fare (partial fare refund scheme)
                     // https://www.kmb.hk/scheme_shortdistance.html
@@ -159,11 +160,12 @@ class GovDataParser {
             govRouteStops: List<GovRouteStop>, busFareMap: Map<Int, Map<Int, Map<Int, Double>>>, exportToFile: Boolean
         ): GovBusData {
             val govBusData = GovBusData()
+            val sortedMap = mutableMapOf<Int, List<Double>>()
             execute("Organizing bus route-stop data into routes and stops...") {
                 govRouteStops.forEach { routeStop ->
                     val info = routeStop.info
-                    if (!govBusData.govBusStopCoordinates.containsKey(info.stopID)) {
-                        govBusData.govBusStopCoordinates[info.stopID] =
+                    if (!sortedMap.containsKey(info.stopID)) {
+                        sortedMap[info.stopID] =
                             listOf(routeStop.geometry.longLatCoordinates[1], routeStop.geometry.longLatCoordinates[0])
                     }
 
@@ -175,13 +177,13 @@ class GovDataParser {
                             val startStop = routeStopsOfRoute.first().info
                             val endStop = routeStopsOfRoute.last().info
                             val fareList = getFareList(busFareMap, info.routeID, info.routeSeq)
-                            val stopFareMap: MutableMap<Int, Double?> =
-                                routeStopsOfRoute.associate { stop -> stop.info.stopID to null }.toMutableMap()
+                            val stopFarePairs: MutableList<Pair<Int, Double?>> =
+                                routeStopsOfRoute.map { stop -> stop.info.stopID to null }.toMutableList()
                             if (fareList.isNotEmpty()) {
                                 assert(fareList.size == routeStopsOfRoute.size - 1) //todo handle
                                 if (fareList.size == routeStopsOfRoute.size - 1) {
                                     for (i in fareList.indices) {
-                                        stopFareMap[routeStopsOfRoute[i].info.stopID] = fareList[i]
+                                        stopFarePairs[i] = stopFarePairs[i].first to fareList[i]
                                     }
                                 } else {
                                     println("Size mismatch:${fareList.size} and ${routeStopsOfRoute.size - 1} - ${info.routeID},${info.routeSeq},${info.companyCode},${info.routeNameE}")
@@ -205,12 +207,13 @@ class GovDataParser {
                                     specialType = info.specialType,
                                     journeyTime = info.journeyTime,
                                     fullFare = info.fullFare,
-                                    stopFareMap = stopFareMap
+                                    stopFarePairs = stopFarePairs
                                 )
                             )
                         }
                     }
                 }
+                govBusData.govBusStopCoordinates.putAll(sortedMap.toSortedMap(compareBy { it }))
             }
             if (exportToFile) {
                 execute("Writing government bus route-stop data to \"$GOV_BUS_DATA_EXPORT_PATH\"...") {

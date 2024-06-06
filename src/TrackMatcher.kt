@@ -103,8 +103,8 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
     }
 
     private fun isTrackInfoBoundMatch(busRoute: BusRoute, trackInfo: TrackInfo, errorDistance: Double): Boolean {
-        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == busRoute.stopFareMap.keys.first() }
-        val destination1 = companyBusData.busStops.find { stop -> stop.stopId == busRoute.stopFareMap.keys.last() }
+        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == busRoute.stopFarePairs.first().first }
+        val destination1 = companyBusData.busStops.find { stop -> stop.stopId == busRoute.stopFarePairs.last().first }
         val origin2 = govStops.find { stop -> stop.stopId == trackInfo.stStopId }
         val destination2 = govStops.find { stop -> stop.stopId == trackInfo.edStopId }
         val originDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(

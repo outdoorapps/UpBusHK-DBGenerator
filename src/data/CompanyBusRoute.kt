@@ -20,4 +20,6 @@ data class CompanyBusRoute(
     @Json(index = 12) val stops: List<String>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
+
+    fun toInfoString(): String = "-${company}-${number}-${bound}-${kmbServiceType}"
 }

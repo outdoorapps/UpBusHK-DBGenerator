@@ -42,9 +42,82 @@ const val compressToXZ = true
 const val dbMinAppVersion = "0.9.0" // *Updated every time with breaking changes
 
 // todo MTRB routes
+fun main() {
+    BasicConfigurator.configure()
+    dirs.forEach {
+        val dir = File(it)
+        if (!dir.exists()) dir.mkdir()
+    }
+
+    val t = measureTime {
+        // I. Download Government data files
+        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
+        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
+        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
+
+        // II. Build bus (company) and minibus (online and government) data
+        val companyBusData = getBusCompanyData()
+        val minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = true)
+
+        // III. Parse government bus data
+        val govBusData = GovDataParser.getGovBusData(loadExistingData = false, exportToFile = true)
+
+        // IV. Match company routes with government record
+        val routeMatcher = RouteMatcher(companyBusData, govBusData)
+
+        // IV. Match company routes with government tracks record
+        execute("Parsing trackInfo...", true) {
+            TrackParser.parseFile(
+                exportTrackInfoToFile = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = false
+            )
+        }
+
+        val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
+        val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
+
+        // V. Generate database
+        val database =
+            generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
+
+        // V. Write to archive
+        execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {
+            Utils.writeToJsonFile(database.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
+        }
+
+        execute("Writing tracks \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
+            val pathIDs = mutableSetOf<Int>()
+            database.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
+            TrackParser.parseFile(
+                exportTrackInfoToFile = true,
+                parsePaths = true,
+                pathIDsToWrite = pathIDs,
+                writeSeparatePathFiles = false
+            )
+        }
+
+        Utils.writeToArchive(
+            files = intermediates,
+            version = database.version,
+            compressToXZ = compressToXZ,
+            deleteSource = true,
+            cleanUpPreviousVersion = true
+        )
+
+        // VI. Upload to Firebase and marked changes
+        val dbFile = getDatabaseFile()
+        if (dbFile != null) {
+            upload(dbFile, database.version)
+        } else {
+            println("Database file not found, nothing is uploaded")
+        }
+    }
+    println("Finished all tasks in $t")
+}
+
 class Main {
     companion object {
-
         val dirs = listOf(resourcesDir, govDataDir, generatedDir, debugDir)
         // private val logger: Logger = LoggerFactory.getLogger(OkHttpUtil::class.java.name)
 
@@ -118,78 +191,4 @@ class Main {
             )
         }
     }
-}
-
-fun main() {
-    BasicConfigurator.configure()
-    dirs.forEach {
-        val dir = File(it)
-        if (!dir.exists()) dir.mkdir()
-    }
-
-    val t = measureTime {
-        // I. Download Government data files
-        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
-        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
-        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
-        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
-        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
-
-        // II. Build bus (company) and minibus (online and government) data
-        val companyBusData = getBusCompanyData()
-        val minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = true)
-
-        // III. Parse government bus data
-        val govBusData = GovDataParser.getGovBusData(loadExistingData = false, exportToFile = true)
-
-        // IV. Match company routes with government record
-        val routeMatcher = RouteMatcher(companyBusData, govBusData)
-
-        // IV. Match company routes with government tracks record
-        execute("Parsing trackInfo...", true) {
-            TrackParser.parseFile(
-                exportTrackInfoToFile = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = false
-            )
-        }
-
-        val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
-        val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
-
-        // V. Generate database
-        val database =
-            generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
-
-        // V. Write to archive
-        execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {
-            Utils.writeToJsonFile(database.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
-        }
-
-        execute("Writing tracks \"${Paths.DB_PATHS_EXPORT_PATH}\"...", true) {
-            val pathIDs = mutableSetOf<Int>()
-            database.busRoutes.forEach { if (it.trackId != null) pathIDs.add(it.trackId) }
-            TrackParser.parseFile(
-                exportTrackInfoToFile = true,
-                parsePaths = true,
-                pathIDsToWrite = pathIDs,
-                writeSeparatePathFiles = false
-            )
-        }
-
-        Utils.writeToArchive(
-            files = intermediates,
-            version = database.version,
-            compressToXZ = compressToXZ,
-            deleteSource = true,
-            cleanUpPreviousVersion = true
-        )
-
-        // VI. Upload to Firebase and marked changes
-        val dbFile = getDatabaseFile()
-        if (dbFile != null) {
-            upload(dbFile, database.version)
-        } else {
-            println("Database file not found, nothing is uploaded")
-        }
-    }
-    println("Finished all tasks in $t")
 }

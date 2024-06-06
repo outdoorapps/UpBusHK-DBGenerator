@@ -2,8 +2,9 @@ import com.beust.klaxon.Klaxon
 import data.*
 import util.Company
 import util.Paths.Companion.BUS_COMPANY_DATA_EXPORT_PATH
-import util.Utils
+import util.Utils.Companion.distanceInMeters
 import util.Utils.Companion.execute
+import util.Utils.Companion.getCompanies
 import java.io.File
 import java.util.zip.GZIPInputStream
 
@@ -12,9 +13,10 @@ class RouteMatcher(
     private val companyBusData: CompanyBusData, private val govBusData: GovBusData
 ) {
     companion object {
-        const val ROUTE_INFO_ERROR_DISTANCE_METERS = 150.0
-        const val ROUTE_INFO_ERROR_DISTANCE_METERS_MAX = 220.0 // Capped for 38X's 220 m
+        const val ROUTE_INFO_ERROR_DISTANCE_METERS = 220.0 // Capped for 38X's 220 m
         const val JOINT_ROUTE_ERROR_DISTANCE_METERS = 160.0
+        const val CIRCULAR_ROUTE_ERROR_DISTANCE_METERS = 250.0 // Capped for CTB 25's 246 m
+        const val STOP_MATCH_ERROR_DISTANCE_METERS = 50.0
 
         // Specific stops that require manual matching
         private val stopIdPatchMap: Map<String, Int> = mapOf("152" to 12728)
@@ -34,16 +36,17 @@ class RouteMatcher(
             }
 
             val jointRouteMap = getJointRouteMap()
-            val map = getCompanyGovBusRouteMap()
-            val r8 = map.filterKeys { it.number == "R8" }
-            r8.forEach { println(it) }
+            val companyGovBusRouteMap = getCompanyGovBusRouteMap()
+            val matchCount = companyGovBusRouteMap.values.count { it != null }
+            val noMatchCount = companyGovBusRouteMap.keys.size - matchCount
+            println("Total company routes: ${companyGovBusRouteMap.keys.size} (Government data matched: $matchCount, unmatched: $noMatchCount)")
 
-            busRoutes = getCompanyGovBusRouteMap().map { (companyBusRoute, govBusRoute) ->
+            busRoutes = companyGovBusRouteMap.map { (companyBusRoute, govBusRoute) ->
                 val companyCode = jointRouteCompanyCodeMap[companyBusRoute.number]
                 val companies = if (companyCode == null) {
                     setOf(companyBusRoute.company)
                 } else {
-                    Utils.getCompanies(companyCode)
+                    getCompanies(companyCode)
                 }
                 val secondaryRoute = jointRouteMap[companyBusRoute]
                 val secondaryStops = if (secondaryRoute == null) {
@@ -51,18 +54,46 @@ class RouteMatcher(
                 } else {
                     getSecondaryStops(companyBusRoute, secondaryRoute)
                 }
-                val govStopFareMap = govBusRoute?.stopFareMap
-                val stopFareMap: MutableMap<String, Double?> =
-                    companyBusRoute.stops.associateWith { null }.toMutableMap()
-                if (govStopFareMap != null && companyBusRoute.stops.size == govStopFareMap.size) {
-                    val fareList = govStopFareMap.values.toList()
-                    for (i in fareList.indices) {
-                        stopFareMap[companyBusRoute.stops[i]] = fareList[i]
+                val govStopFarePairs = govBusRoute?.stopFarePairs
+                val stopFarePairs: MutableList<Pair<String, Double?>> =
+                    companyBusRoute.stops.map { it to null }.toMutableList()
+
+                if (govStopFarePairs != null) {
+                    if (companyBusRoute.stops.size == govStopFarePairs.size) {
+                        val fareList = govStopFarePairs.map { it.second }
+                        for (i in fareList.indices) {
+                            stopFarePairs[i] = stopFarePairs[i].first to fareList[i]
+                        }
+                    } else {
+                        // If all fares are the same, fill the values (likely case for circular routes, short and does
+                        // not include the final stop)
+                        val fullFare = govStopFarePairs.map { it.second }.first()
+                        if (fullFare != null && govStopFarePairs.map { it.second }.all { it == fullFare }) {
+                            for (i in stopFarePairs.indices) {
+                                stopFarePairs[i] = stopFarePairs[i].first to fullFare
+                            }
+                        } else {
+                            // Stop location based fare matching
+                            val farePairs = govStopFarePairs.toMutableList()
+
+                            for (i in stopFarePairs.indices) {
+                                val stop = companyBusData.busStops.find { it.stopId == companyBusRoute.stops[i] }
+                                if (stop != null) {
+                                    val closestStopId = getClosestGovStopIdWithinRange(
+                                        stop, farePairs.map { it.first }.toList(), STOP_MATCH_ERROR_DISTANCE_METERS
+                                    )
+                                    if (closestStopId != null) {
+                                        stopFarePairs[i] =
+                                            stopFarePairs[i].first to farePairs.find { it.first == closestStopId }!!.second
+                                        farePairs.remove(farePairs.find { it.first == closestStopId }!!)
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
 
-                BusRoute(
-                    companies = companies,
+                BusRoute(companies = companies,
                     number = companyBusRoute.number,
                     bound = companyBusRoute.bound,
                     secondaryBound = secondaryRoute?.bound,
@@ -75,12 +106,11 @@ class RouteMatcher(
                     kmbServiceType = companyBusRoute.kmbServiceType,
                     nlbRouteId = companyBusRoute.nlbRouteId,
                     trackId = null,
-                    fullFare = govBusRoute?.fullFare,
-                    stopFareMap = stopFareMap,
-                    stops = stopFareMap.keys.toList(),
+                    fullFare = govBusRoute?.fullFare ?: stopFarePairs.map { it.second }.first(),
+                    stopFarePairs = stopFarePairs,
+                    stops = stopFarePairs.map { it.first },
                     secondaryStops = secondaryStops,
-                    fares = stopFareMap.values.toList()
-                )
+                    fares = stopFarePairs.map { it.second })
             }
 
             val kmbRouteCount = busRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.KMB) }.size
@@ -93,60 +123,130 @@ class RouteMatcher(
             )
         }
 
-        val busRoutesWithGeneratedData = generateStopBasedFare(busRoutes)
-        val fareCount = busRoutesWithGeneratedData.filter { isStopFareMapPopulated(it) }.size
-        val matchCount = busRoutes.filter { isStopFareMapPopulated(it) }.size
-        val generatedCount = busRoutesWithGeneratedData.filter { isStopFareMapPopulated(it) }.size - matchCount
+        val busRoutesWithGeneratedData = generateFare(busRoutes)
+        val fareCount = busRoutesWithGeneratedData.filter { isStopFarePairsPopulated(it) }.size
+        val matchCount = busRoutes.filter { isStopFarePairsPopulated(it) }.size
+        val generatedCount = busRoutesWithGeneratedData.filter { isStopFarePairsPopulated(it) }.size - matchCount
         println("Total number of bus routes:${busRoutes.size}, with fare:$fareCount (matched:$matchCount, generated:$generatedCount)")
         this.busRoutes = busRoutesWithGeneratedData
     }
 
-    private fun generateStopBasedFare(busRoutes: List<BusRoute>): List<BusRoute> {
+    private fun generateFare(busRoutes: List<BusRoute>): List<BusRoute> {
         return busRoutes.map { busRoute ->
             var newBusRoute = busRoute
-            if (busRoute.kmbServiceType != null && !isStopFareMapPopulated(busRoute)) {
+            // Match fare using data from different KMB service type
+            if (busRoute.kmbServiceType != null && !isStopFarePairsPopulated(busRoute)) {
                 val altRoutes = busRoutes.filter {
-                    it.number == busRoute.number && it.bound == busRoute.bound && it.companies.containsAll(busRoute.companies) && isStopFareMapPopulated(
+                    it.number == busRoute.number && it.bound == busRoute.bound && it.companies.containsAll(busRoute.companies) && isStopFarePairsPopulated(
                         it
                     )
                 }
                 if (altRoutes.isNotEmpty()) {
-                    val altRoute = altRoutes.maxByOrNull { it.stopFareMap.values.count { value -> value != null } }
+                    // Find the route with maximum non-null fares
+                    val altRoute = altRoutes.maxByOrNull { route ->
+                        route.stopFarePairs.map { it.second }.count { value -> value != null }
+                    }
                     if (altRoute != null) {
-                        val generatedMap =
-                            busRoute.stopFareMap.map { (stopId, _) -> stopId to altRoute.stopFareMap[stopId] }.toMap()
-                        newBusRoute = busRoute.copy(
-                            stopFareMap = generatedMap,
-                            stops = generatedMap.keys.toList(),
-                            fares = generatedMap.values.toList()
+                        val fares = altRoute.stopFarePairs.toMutableList()
+                        val generatedList = busRoute.stopFarePairs.toMutableList()
+                        for (i in generatedList.indices) {
+                            val matchingPair = altRoute.stopFarePairs.find { it.first == generatedList[i].first }
+                            if (matchingPair != null) {
+                                generatedList[i] = generatedList[i].first to matchingPair.second
+                                fares.remove(matchingPair)
+                            }
+                        }
+                        newBusRoute = busRoute.copy(stopFarePairs = generatedList,
+                            stops = generatedList.map { it.first }.toList(),
+                            fares = generatedList.map { it.second }.toList()
                         )
                     }
                 }
             }
-            newBusRoute
+            val newStopFarePairs = newBusRoute.stopFarePairs.toMutableList()
+            val newFares = newBusRoute.fares.toMutableList()
+            for (i in newFares.indices) {
+                if (i > 0 && newFares[i] == null) {
+                    val previousNonNullFare = newFares.subList(0, i).findLast { it != null }
+                    val nextNonNullFare = newFares.subList(i, newFares.size).find { it != null }
+                    if (previousNonNullFare != null && nextNonNullFare != null && previousNonNullFare == nextNonNullFare) {
+                        newFares[i] = previousNonNullFare
+                        newStopFarePairs[i] = newStopFarePairs[i].first to previousNonNullFare
+                    }
+                }
+            }
+            newBusRoute.copy(fares = newFares)
         }
     }
 
-    private fun isStopFareMapPopulated(busRoute: BusRoute): Boolean = busRoute.stopFareMap.values.any { it != null }
+    private fun isStopFarePairsPopulated(busRoute: BusRoute): Boolean =
+        busRoute.stopFarePairs.map { it.second }.any { it != null }
 
     fun getCompanyGovBusRouteMap(): Map<CompanyBusRoute, GovBusRoute?> {
         val companyGovRouteMap = mutableMapOf<CompanyBusRoute, GovBusRoute?>()
         val jointedList = getJointedList().toMutableList()
         jointedList.forEach { companyBusRoute ->
-            companyGovRouteMap[companyBusRoute] = getGovBusRouteCandidates(companyBusRoute).find { info ->
-                isCompanyGovRouteBoundMatch(companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS)
+            val candidates = getGovBusRouteCandidates(companyBusRoute).filter { govBusRoute ->
+                isCompanyGovRouteBoundMatch(
+                    companyBusRoute = companyBusRoute,
+                    govBusRoute = govBusRoute,
+                    errorDistance = ROUTE_INFO_ERROR_DISTANCE_METERS,
+                )
             }
-        }
 
-        // 2nd round matching using greater error allowance
-        companyGovRouteMap.forEach { (t, u) -> if (u != null) jointedList.remove(t) }
-        jointedList.forEach { companyBusRoute ->
-            companyGovRouteMap[companyBusRoute] = getGovBusRouteCandidates(companyBusRoute).find { info ->
-                isCompanyGovRouteBoundMatch(companyBusRoute, info, ROUTE_INFO_ERROR_DISTANCE_METERS_MAX)
+            companyGovRouteMap[companyBusRoute] = if (candidates.size == 1) {
+                candidates.first()
+            } else if (candidates.size > 1) {
+                // stop based matching
+                var matchCount = 0
+                var match: GovBusRoute? = null
+                candidates.forEach {
+                    val c = countMatchingStops(companyBusRoute, it)
+                    if (c > matchCount) {
+                        matchCount = c
+                        match = it
+                    }
+                }
+                match
+            } else {
+                null
             }
         }
         return companyGovRouteMap
     }
+
+    private fun countMatchingStops(companyBusRoute: CompanyBusRoute, govBusRoute: GovBusRoute): Int {
+        var count = 0
+        val govStops = govBusRoute.stopFarePairs.map { it.first }.toMutableList()
+        companyBusRoute.stops.forEach { companyStopId ->
+            val stop = companyBusData.busStops.find { e -> e.stopId == companyStopId }
+            if (stop != null) {
+                val closestStopId = getClosestGovStopIdWithinRange(stop, govStops, STOP_MATCH_ERROR_DISTANCE_METERS)
+                if (closestStopId != null) {
+                    govStops.remove(closestStopId)
+                    count++
+                }
+            }
+        }
+        return count
+    }
+
+    private fun getClosestGovStopIdWithinRange(stop: BusStop, govStops: List<Int>, range: Double): Int? {
+        var d = Double.MAX_VALUE
+        var closestStopId: Int? = null
+        govStops.forEach { govStopId ->
+            val govStopCoordinate = govBusData.govBusStopCoordinates[govStopId]
+            if (govStopCoordinate != null) {
+                val distance = distanceInMeters(stop.coordinate, govStopCoordinate)
+                if (distance < range && distance < d) {
+                    d = distance
+                    closestStopId = govStopId
+                }
+            }
+        }
+        return closestStopId
+    }
+
 
     // Return a list of all routes minus the joint route duplicates (for a KMB/LWB + CTB route, only the KMB/LWB route remains)
     private fun getJointedList(): List<CompanyBusRoute> {
@@ -197,29 +297,42 @@ class RouteMatcher(
         jointRouteCompanyCodeMap.contains(companyBusRoute.number)
 
     private fun isCompanyGovRouteBoundMatch(
-        companyBusRoute: CompanyBusRoute, govBusRoute: GovBusRoute, errorDistance: Double, printValues: Boolean = false
+        companyBusRoute: CompanyBusRoute,
+        govBusRoute: GovBusRoute,
+        errorDistance: Double,
+        printValues: Boolean = false
     ): Boolean {
-        val origin1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }
-        val destination1 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }
-        val stStopId = govBusRoute.stopFareMap.keys.first()
-        val edStopId = govBusRoute.stopFareMap.keys.last()
-        val origin2 = govBusData.govBusStopCoordinates[stStopId]
-        val destination2 = govBusData.govBusStopCoordinates[edStopId]
+        val comOrigin = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }
+        val comDestination = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }
+        val stStopId = govBusRoute.stopFarePairs.first().first
+        val edStopId = govBusRoute.stopFarePairs.last().first
+        val govOrigin = govBusData.govBusStopCoordinates[stStopId]
+        val govDestination = govBusData.govBusStopCoordinates[edStopId]
         val originsDistance =
-            if (origin1 != null && origin2 != null) Utils.distanceInMeters(origin1.coordinate, origin2)
+            if (comOrigin != null && govOrigin != null) distanceInMeters(comOrigin.coordinate, govOrigin)
             else Double.MAX_VALUE
-        val destinationsDistance = if (destination1 != null && destination2 != null) Utils.distanceInMeters(
-            destination1.coordinate, destination2
+        val destinationsDistance = if (comDestination != null && govDestination != null) distanceInMeters(
+            comDestination.coordinate, govDestination
         ) else Double.MAX_VALUE
+        // Circular route case, government data omit the last stop
+        val govOriginComDestinationDistance =
+            if (govBusRoute.originEn == govBusRoute.destEn && govOrigin != null && comDestination != null) {
+                distanceInMeters(govOrigin, comDestination.coordinate)
+            } else Double.MAX_VALUE
+
         if (printValues) {
-            println("--origin distance:$originsDistance (${origin1?.coordinate},$origin2) (${origin1?.stopId}, ${stStopId})")
-            println("--destination distance:$destinationsDistance (${destination1?.coordinate},$destination2), (${destination1?.stopId}, ${edStopId})")
+            println("-${companyBusRoute.toInfoString()}")
+            println("--origin distance:$originsDistance (${comOrigin?.coordinate},$govOrigin) (${comOrigin?.stopId}, ${stStopId})")
+            println("--destination distance:$destinationsDistance (${comDestination?.coordinate},$govDestination), (${comDestination?.stopId}, ${edStopId})")
+            if (govBusRoute.originEn == govBusRoute.destEn) {
+                println("--GovOrigin-ComDestination distance:$govOriginComDestinationDistance ($govOrigin,${comDestination?.coordinate}), (${stStopId}, ${comDestination?.stopId})")
+            }
         }
         return (originsDistance <= errorDistance || isStopMatch(
-            origin1?.stopId, stStopId
+            comOrigin?.stopId, stStopId
         )) && (destinationsDistance <= errorDistance || isStopMatch(
-            destination1?.stopId, edStopId
-        ))
+            comDestination?.stopId, edStopId
+        )) || govOriginComDestinationDistance < CIRCULAR_ROUTE_ERROR_DISTANCE_METERS
     }
 
     private fun isStopMatch(stopId: String?, govStopId: Int): Boolean {
@@ -236,10 +349,10 @@ class RouteMatcher(
         val origin2 = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute2.stops.first() }?.coordinate
         val destination2 =
             companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute2.stops.last() }?.coordinate
-        val originsDistance = if (origin1 != null && origin2 != null) Utils.distanceInMeters(
+        val originsDistance = if (origin1 != null && origin2 != null) distanceInMeters(
             origin1, origin2
         ) else Double.MAX_VALUE
-        val destinationsDistance = if (destination1 != null && destination2 != null) Utils.distanceInMeters(
+        val destinationsDistance = if (destination1 != null && destination2 != null) distanceInMeters(
             destination1, destination2
         ) else Double.MAX_VALUE
         return originsDistance <= errorDistance || destinationsDistance <= errorDistance
@@ -278,7 +391,7 @@ class RouteMatcher(
         candidateStopIDs.forEach {
             val candidateStop = companyBusData.busStops.find { x -> x.stopId == it }
             if (candidateStop != null) {
-                val distance = Utils.distanceInMeters(candidateStop.coordinate, busStop.coordinate)
+                val distance = distanceInMeters(candidateStop.coordinate, busStop.coordinate)
                 if (distance < minDistance) {
                     minDistance = distance
                     result = candidateStop.stopId

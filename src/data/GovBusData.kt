@@ -12,7 +12,7 @@ data class GovBusData @JvmOverloads constructor(
 ) {
     companion object {
         fun fromJson(json: String) = Klaxon().fieldConverter(CoordinateMap::class, coordinateMapConverter)
-            .fieldConverter(StopFareMap::class, stopFareMapConverter).parse<GovBusData>(json)
+            .fieldConverter(StopFarePairs::class, pairsConverter).parse<GovBusData>(json)
     }
 
     fun toJson() = Klaxon().toJsonString(this)

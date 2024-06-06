@@ -20,7 +20,7 @@ data class BusRoute(
     @Json(index = 12) val nlbRouteId: String?,
     @Json(index = 13) val trackId: Int?,
     @Json(index = 14) val fullFare: Double?,
-    @Json(ignored = true) val stopFareMap: Map<String, Double?>,
+    @Json(ignored = true) val stopFarePairs: List<Pair<String, Double?>>,
     @Json(index = 15) val stops: List<String>,
     @Json(index = 16) val secondaryStops: List<String>,
     @Json(index = 17) val fares: List<Double?>

@@ -42,11 +42,10 @@ class RouteMatcher(
             println("Total company routes: ${companyGovBusRouteMap.keys.size} (Government data matched: $matchCount, unmatched: $noMatchCount)")
 
             busRoutes = companyGovBusRouteMap.map { (companyBusRoute, govBusRoute) ->
-                val companyCode = jointRouteCompanyCodeMap[companyBusRoute.number]
-                val companies = if (companyCode == null) {
-                    setOf(companyBusRoute.company)
+                val companies = if (govBusRoute != null) {
+                    getCompanies(govBusRoute.companyCode)
                 } else {
-                    getCompanies(companyCode)
+                    setOf(companyBusRoute.company)
                 }
                 val secondaryRoute = jointRouteMap[companyBusRoute]
                 val secondaryStops = if (secondaryRoute == null) {
@@ -297,10 +296,7 @@ class RouteMatcher(
         jointRouteCompanyCodeMap.contains(companyBusRoute.number)
 
     private fun isCompanyGovRouteBoundMatch(
-        companyBusRoute: CompanyBusRoute,
-        govBusRoute: GovBusRoute,
-        errorDistance: Double,
-        printValues: Boolean = false
+        companyBusRoute: CompanyBusRoute, govBusRoute: GovBusRoute, errorDistance: Double, printValues: Boolean = false
     ): Boolean {
         val comOrigin = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.first() }
         val comDestination = companyBusData.busStops.find { stop -> stop.stopId == companyBusRoute.stops.last() }

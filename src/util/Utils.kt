@@ -206,7 +206,7 @@ class Utils {
         fun extractVersionNumber(databaseFile: File) =
             databaseFile.name.replace("${DATABASE_NAME}_", "").replace(dbExtension, "")
 
-        fun Double.roundCoordinate(): Double = this.toBigDecimal().setScale(6, RoundingMode.HALF_EVEN).toDouble()
+        fun Double.roundCoordinate(): Double = this.toBigDecimal().setScale(5, RoundingMode.HALF_EVEN).toDouble()
 
         private fun String.trimIdeographicSpace(): String = this.replace("\u3000", "")
 

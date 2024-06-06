@@ -9,8 +9,20 @@ class Patch {
         // "E3B8D0FF5C269463" <- belong to an obsolete route A41,O,serviceType=5
         // "3236114A2BB68ACC" <- belong to obsolete routes A41,I,serviceType=5,6
         // "93BA278DCD263EF8" <- belong to obsolete routes A41,I,serviceType=5,6
+        // "002265" <- Stop for the CTB route 314 (swimming season only route)
         val accountedStops =
             listOf("B7A9E1A243516288", "E3B8D0FF5C269463", "3236114A2BB68ACC", "93BA278DCD263EF8")
+
+        val patchStops = listOf(
+            BusStop(
+                Company.CTB,
+                "002265",
+                engName = "Stanley Main Beach, Stanley Beach Road",
+                chiTName = "赤柱正灘, 赤柱灘道",
+                chiSName = "赤柱正滩, 赤柱滩道",
+                coordinate = listOf(22.220782, 114.213688)
+            )
+        )
         private val stopPatchMap = mapOf("B7A9E1A243516288" to "E5421509D8FC00AF")
 
         fun patchStops(busStops: MutableList<BusStop>) {

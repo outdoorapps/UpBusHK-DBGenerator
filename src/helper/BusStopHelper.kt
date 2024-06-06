@@ -18,6 +18,7 @@ import util.Company
 import util.HttpUtils.Companion.get
 import util.HttpUtils.Companion.getAsync
 import util.Patch.Companion.accountedStops
+import util.Patch.Companion.patchStops
 import util.Utils
 import java.util.concurrent.CountDownLatch
 
@@ -59,11 +60,21 @@ class BusStopHelper {
         val ctbBusCompanyRoutes = companyBusRoutes.filter { it.company == Company.CTB }
         ctbBusCompanyRoutes.forEach { ctbStopIDs.addAll(it.stops) }
 
+        println("Patching CTB stops...")
+        val stopIDs = ctbStopIDs.toList()
+        stopIDs.forEach { ctbStopID ->
+            if (patchStops.any { it.stopId == ctbStopID }) {
+                ctbStopIDs.remove(ctbStopID)
+            }
+        }
+        ctbStops.addAll(patchStops)
+        println("- Patch data added for stops: ${patchStops.map { it.stopId }}")
+
         do {
             ctbStops.addAll(getCtbStopsAsync())
-            val size = this.ctbStopIDs.size
+            val size = ctbStopIDs.size
             if (size != 0) {
-                println("$size errors received, waiting for ${TIMEOUT_SECOND}s before restarting...")
+                println("$size errors received for CTB stop IDs $ctbStopIDs, waiting for ${TIMEOUT_SECOND}s before restarting...")
                 Thread.sleep(TIMEOUT_SECOND * 1000)
                 println("Restarting...")
             }

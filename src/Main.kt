@@ -51,11 +51,11 @@ fun main() {
 
     val t = measureTime {
         // I. Download Government data files
-        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
-        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
-        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
-        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
-        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
+//        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
+//        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
+//        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
+//        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
+//        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
 
         // II. Build bus (company) and minibus (online and government) data
         val companyBusData = getBusCompanyData()

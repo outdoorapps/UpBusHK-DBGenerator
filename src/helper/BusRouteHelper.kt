@@ -1,6 +1,9 @@
 package helper
 
+import com.beust.klaxon.Klaxon
 import data.CompanyBusRoute
+import data.GovBusData
+import data.GovBusRoute
 import json_model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -8,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Call
+import okhttp3.RequestBody.Companion.toRequestBody
 import util.APIs.Companion.CTB_ALL_ROUTES
 import util.APIs.Companion.CTB_ROUTE_STOP
 import util.APIs.Companion.KMB_ALL_ROUTES
@@ -18,11 +22,15 @@ import util.Bound
 import util.Company
 import util.HttpUtils.Companion.get
 import util.HttpUtils.Companion.getAsync
+import util.HttpUtils.Companion.jsonMediaType
+import util.HttpUtils.Companion.post
+import util.Paths.Companion.MTRB_SCHEDULE_URL
 import util.Utils
 import java.util.concurrent.CountDownLatch
 
 class BusRouteHelper {
     companion object {
+        private val mtrbRouteRegex = "K[0-9]+[A-Z]?|506".toRegex()
         private val mutex = Mutex()
         fun getRoutes(company: Company): List<CompanyBusRoute> {
             val companyBusRoutes = mutableListOf<CompanyBusRoute>()
@@ -31,7 +39,7 @@ class BusRouteHelper {
                     Company.KMB, Company.LWB -> KMB_ALL_ROUTES
                     Company.CTB -> CTB_ALL_ROUTES
                     Company.NLB -> NLB_ALL_ROUTES
-                    Company.MTRB -> TODO()
+                    Company.MTRB -> return emptyList()
                 }
                 val response = get(url)
 
@@ -42,8 +50,7 @@ class BusRouteHelper {
                             val kmbCompanyBusRoutes = mutableListOf<CompanyBusRoute>()
                             val countDownLatch = CountDownLatch(kmbRoutes.size)
                             kmbRoutes.forEach {
-                                getRouteStopsAsync(
-                                    Company.KMB,
+                                getRouteStopsAsync(Company.KMB,
                                     it.route,
                                     it.bound,
                                     it.serviceType.toInt(),
@@ -74,10 +81,9 @@ class BusRouteHelper {
                                     })
                             }
                             countDownLatch.await()
-                            kmbCompanyBusRoutes.sortWith(
-                                compareBy({ it.number.toInt(Character.MAX_RADIX) },
-                                    { it.bound },
-                                    { it.kmbServiceType })
+                            kmbCompanyBusRoutes.sortWith(compareBy({ it.number.toInt(Character.MAX_RADIX) },
+                                { it.bound },
+                                { it.kmbServiceType })
                             )
                             companyBusRoutes.addAll(kmbCompanyBusRoutes)
                         }
@@ -157,7 +163,7 @@ class BusRouteHelper {
                                         Bound.I
                                     }
                                 }
-                                val stops = getRouteStops(Company.NLB, it.routeId, null, null)
+                                val stops = getNlbRouteStops(it.routeId)
                                 nlbCompanyBusRoutes.add(
                                     CompanyBusRoute(
                                         Company.NLB,
@@ -179,7 +185,7 @@ class BusRouteHelper {
                         }
                     }
 
-                    Company.MTRB -> TODO()
+                    else -> return emptyList()
                 }
             } catch (e: Exception) {
                 println("Error occurred while getting ${company.name.uppercase()} routes \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
@@ -187,45 +193,33 @@ class BusRouteHelper {
             return companyBusRoutes
         }
 
-        private fun getRouteStops(
-            company: Company,
-            number: String,
-            bound: Bound?,
-            serviceType: Int?,
-        ): List<String> {
-            val direction = if (bound == Bound.I) "inbound" else "outbound"
-            val url = when (company) {
-                Company.KMB, Company.LWB -> "$KMB_ROUTE_STOP/$number/$direction/$serviceType"
-                Company.CTB -> "$CTB_ROUTE_STOP/$number/$direction"
-                Company.NLB -> "$NLB_ROUTE_STOP$number"
-                Company.MTRB -> TODO()
+        fun getMtrbRoutes(govBusData: GovBusData): List<GovBusRoute> {
+            val mtrbRoutes = govBusData.govBusRoutes.filter { e -> e.routeNameE.matches(mtrbRouteRegex) }
+            val mtrbRoutesValidated = mutableListOf<GovBusRoute>()
+            mtrbRoutes.forEach {
+                val response = post(
+                    MTRB_SCHEDULE_URL, MtrbRequestBody("en", it.routeNameE).toJson().toRequestBody(
+                        jsonMediaType
+                    )
+                )
+                val mtrbScheduleResponse = Klaxon().parse<MtrbScheduleResponse>(response)
+                if (mtrbScheduleResponse?.footerRemarks != null) {
+                    mtrbRoutesValidated.add(it)
+                }
             }
+            // todo K53,K73,K75P has duplicates multiple types?
+            mtrbRoutesValidated.sortBy { it.routeNameE }
+            return mtrbRoutesValidated
+        }
+
+        private fun getNlbRouteStops(number: String): List<String> {
+            val url = "$NLB_ROUTE_STOP$number"
             val response = get(url)
             val stops = mutableListOf<String>()
-            when (company) {
-                Company.KMB, Company.LWB -> {
-                    val routeStops = KmbRouteStopResponse.fromJson(response)?.stops
-                    if (!routeStops.isNullOrEmpty()) {
-                        stops.addAll(routeStops.map { x -> x.stop })
-                    }
-                }
-
-                Company.CTB -> {
-                    val routeStops = CtbRouteStopResponse.fromJson(response)?.stops
-                    if (!routeStops.isNullOrEmpty()) {
-                        stops.addAll(routeStops.map { x -> x.stop })
-                    }
-                }
-
-                Company.NLB -> {
-                    NlbRouteStopResponse.fromJson(response)?.stops
-                    val routeStops = NlbRouteStopResponse.fromJson(response)?.stops
-                    if (!routeStops.isNullOrEmpty()) {
-                        stops.addAll(routeStops.map { x -> x.stop })
-                    }
-                }
-
-                Company.MTRB -> TODO()
+            NlbRouteStopResponse.fromJson(response)?.stops
+            val routeStops = NlbRouteStopResponse.fromJson(response)?.stops
+            if (!routeStops.isNullOrEmpty()) {
+                stops.addAll(routeStops.map { x -> x.stop })
             }
             return stops
         }
@@ -243,7 +237,7 @@ class BusRouteHelper {
                 Company.KMB, Company.LWB -> "$KMB_ROUTE_STOP/$number/$direction/$serviceType"
                 Company.CTB -> "$CTB_ROUTE_STOP/$number/$direction"
                 Company.NLB -> "$NLB_ROUTE_STOP/$number"
-                Company.MTRB -> TODO()
+                Company.MTRB -> return
             }
             getAsync(url = url, onFailure = onFailure, onResponse = { response ->
                 when (company) {
@@ -275,7 +269,7 @@ class BusRouteHelper {
                         }
                     }
 
-                    Company.MTRB -> TODO()
+                    else -> {}
                 }
             })
         }

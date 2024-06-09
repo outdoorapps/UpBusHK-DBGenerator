@@ -1,8 +1,6 @@
 package helper
 
-import data.BusStop
-import data.CompanyBusData
-import data.CompanyBusRoute
+import data.*
 import json_model.CtbStopResponse
 import json_model.KmbStopResponse
 import json_model.NlbRouteStopResponse
@@ -20,11 +18,37 @@ import util.HttpUtils.Companion.getAsync
 import util.Patch.Companion.accountedStops
 import util.Patch.Companion.patchStops
 import util.Utils
+import util.Utils.Companion.toGovStopId
+import util.Utils.Companion.toOriginalGovStopId
 import java.util.concurrent.CountDownLatch
 
 class BusStopHelper {
     companion object {
         private const val TIMEOUT_SECOND = 120L
+
+        fun getMtrbStops(mtrbRoutes: List<BusRoute>, govBusData: GovBusData): List<BusStop> {
+            val mtrbStops = mutableListOf<BusStop>()
+            val stopIDs = mutableSetOf<Int>()
+            mtrbRoutes.forEach {
+                stopIDs.addAll(it.stops.map { generatedStopID -> generatedStopID.toOriginalGovStopId() })
+            }
+            stopIDs.forEach { stopId ->
+                val govStop = govBusData.govStops.find { it.stopId == stopId }
+                if (govStop != null) {
+                    mtrbStops.add(
+                        BusStop(
+                            company = Company.MTRB,
+                            stopId = stopId.toGovStopId(),
+                            engName = govStop.stopNameE,
+                            chiTName = govStop.stopNameC,
+                            chiSName = govStop.stopNameS,
+                            coordinate = govStop.coordinate
+                        )
+                    )
+                }
+            }
+            return mtrbStops
+        }
     }
 
     private val mutex = Mutex()

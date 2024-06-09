@@ -51,11 +51,11 @@ fun main() {
 
     val t = measureTime {
         // I. Download Government data files
-//        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
-//        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
-//        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
-//        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
-//        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
+        downloadIgnoreCertificate(BUS_ROUTES_GEOJSON_URL, BUS_ROUTES_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_STOPS_GEOJSON_URL, BUS_STOPS_GEOJSON_PATH)
+        downloadIgnoreCertificate(BUS_ROUTE_STOP_URL, BUS_ROUTE_STOP_JSON_PATH)
+        downloadIgnoreCertificate(BUS_FARE_URL, BUS_FARE_PATH)
+        downloadIgnoreCertificate(MINIBUS_ROUTES_GEOJSON_URL, MINIBUS_ROUTES_JSON_PATH)
 
         // II. Build bus (company) and minibus (online and government) data
         val companyBusData = getBusCompanyData()
@@ -65,7 +65,7 @@ fun main() {
         val govBusData = GovDataParser.getGovBusData(loadExistingData = false, exportToFile = true)
 
         // IV. Match company routes with government record
-        val routeMatcher = RouteMatcher(companyBusData, govBusData)
+        val routeMerger = RouteMerger(companyBusData, govBusData)
 
         // IV. Match company routes with government tracks record
         execute("Parsing trackInfo...", true) {
@@ -75,11 +75,11 @@ fun main() {
         }
 
         val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
-        val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
+        val busRoutes = trackMatcher.matchTracks(routeMerger.busRoutes)
 
         // V. Generate database
         val database =
-            generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
+            generateDatabase(busRoutes = busRoutes, busStops = routeMerger.busStops, minibusData = minibusData)
 
         // V. Write to archive
         execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {

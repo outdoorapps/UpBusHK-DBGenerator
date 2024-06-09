@@ -11,6 +11,7 @@ class Paths {
         const val BUS_ROUTE_STOP_URL = "https://static.data.gov.hk/td/routes-fares-geojson/JSON_BUS.json"
         const val MINIBUS_ROUTES_GEOJSON_URL ="https://static.data.gov.hk/td/routes-fares-geojson/JSON_GMB.json"
         const val BUS_FARE_URL = "https://static.data.gov.hk/td/routes-fares-xml/FARE_BUS.xml"
+        const val MTRB_SCHEDULE_URL = "https://rt.data.gov.hk/v1/transport/mtr/bus/getSchedule"
 
         val resourcesDir = "resources${File.separator}"
         val govDataDir = "${resourcesDir}govData${File.separator}"

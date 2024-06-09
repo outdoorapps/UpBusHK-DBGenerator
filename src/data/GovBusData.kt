@@ -1,32 +1,17 @@
 package data
 
-import com.beust.klaxon.*
+import com.beust.klaxon.Json
+import com.beust.klaxon.Klaxon
 
-@Target(AnnotationTarget.FIELD)
-annotation class CoordinateMap
 
-data class GovBusData @JvmOverloads constructor(
+data class GovBusData(
     @Json(name = "gov_bus_routes", index = 1) val govBusRoutes: MutableList<GovBusRoute> = mutableListOf(),
-    @CoordinateMap @Json(name = "gov_bus_stop_coordinates", index = 2)
-    val govBusStopCoordinates: MutableMap<Int, List<Double>> = mutableMapOf()
+    @Json(index = 2) val govStops: MutableList<GovStop> = mutableListOf()
 ) {
     companion object {
-        fun fromJson(json: String) = Klaxon().fieldConverter(CoordinateMap::class, coordinateMapConverter)
-            .fieldConverter(StopFarePairs::class, pairsConverter).parse<GovBusData>(json)
+        fun fromJson(json: String) =
+            Klaxon().fieldConverter(StopFarePairs::class, pairsConverter).parse<GovBusData>(json)
     }
 
     fun toJson() = Klaxon().toJsonString(this)
-}
-
-val coordinateMapConverter = object : Converter {
-    override fun canConvert(cls: Class<*>) = cls == Map::class.java
-
-    override fun toJson(value: Any): String = value.toString()
-
-    override fun fromJson(jv: JsonValue) = if (jv.obj != null) {
-        val stringMap = Klaxon().parseFromJsonObject<MutableMap<String, List<Double>>>(jv.obj!!)
-        stringMap!!.entries.associate { it.key.toInt() to it.value }
-    } else {
-        throw KlaxonException("Couldn't parse null CoordinateMap")
-    }
 }

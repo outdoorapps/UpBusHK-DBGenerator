@@ -12,10 +12,10 @@ data class CtbStopResponse(
 
     val data: CtbStop?
 ) {
-    public fun toJson() = Klaxon().toJsonString(this)
+    fun toJson() = Klaxon().toJsonString(this)
 
     companion object {
-        public fun fromJson(json: String) = Klaxon().parse<CtbStopResponse>(json)
+        fun fromJson(json: String) = Klaxon().parse<CtbStopResponse>(json)
     }
 }
 

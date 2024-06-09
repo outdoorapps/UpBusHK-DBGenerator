@@ -160,13 +160,21 @@ class GovDataParser {
             govRouteStops: List<GovRouteStop>, busFareMap: Map<Int, Map<Int, Map<Int, Double>>>, exportToFile: Boolean
         ): GovBusData {
             val govBusData = GovBusData()
-            val sortedMap = mutableMapOf<Int, List<Double>>()
+            val sortedMap = mutableMapOf<Int, GovStop>()
             execute("Organizing bus route-stop data into routes and stops...") {
                 govRouteStops.forEach { routeStop ->
                     val info = routeStop.info
                     if (!sortedMap.containsKey(info.stopID)) {
-                        sortedMap[info.stopID] =
-                            listOf(routeStop.geometry.longLatCoordinates[1], routeStop.geometry.longLatCoordinates[0])
+                        sortedMap[info.stopID] = GovStop(
+                            stopId = info.stopID,
+                            stopNameE = info.stopNameE,
+                            stopNameC = info.stopNameC,
+                            stopNameS = info.stopNameS,
+                            coordinate = listOf(
+                                routeStop.geometry.longLatCoordinates[1],
+                                routeStop.geometry.longLatCoordinates[0]
+                            )
+                        )
                     }
 
                     if (!govBusData.govBusRoutes.any { it.routeId == info.routeID && it.routeSeq == info.routeSeq }) {
@@ -213,7 +221,8 @@ class GovDataParser {
                         }
                     }
                 }
-                govBusData.govBusStopCoordinates.putAll(sortedMap.toSortedMap(compareBy { it }))
+                sortedMap.toSortedMap(compareBy { it })
+                govBusData.govStops.addAll(sortedMap.values)
             }
             if (exportToFile) {
                 execute("Writing government bus route-stop data to \"$GOV_BUS_DATA_EXPORT_PATH\"...") {

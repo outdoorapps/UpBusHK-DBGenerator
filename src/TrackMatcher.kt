@@ -1,5 +1,5 @@
 import Main.Companion.generateDatabase
-import RouteMatcher.Companion.CIRCULAR_ROUTE_ERROR_DISTANCE_METERS
+import RouteMerger.Companion.CIRCULAR_ROUTE_ERROR_DISTANCE_METERS
 import com.beust.klaxon.Klaxon
 import data.*
 import util.Company
@@ -12,7 +12,7 @@ import util.Utils.Companion.distanceInMeters
 import util.Utils.Companion.execute
 import util.Utils.Companion.intermediates
 import util.Utils.Companion.loadCompanyBusData
-import util.Utils.Companion.loadGovBusStops
+import util.Utils.Companion.loadGovBusStopsCoordinatesOnly
 import util.Utils.Companion.writeToArchive
 import util.Utils.Companion.writeToJsonFile
 import java.io.File
@@ -35,7 +35,7 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
 
         execute("Initializing data for TrackMatcher...") {
             companyBusDataTemp = companyBusData ?: loadCompanyBusData()
-            govStopsTemp = govStops ?: loadGovBusStops()
+            govStopsTemp = govStops ?: loadGovBusStopsCoordinatesOnly()
 
             val file = File(TRACK_INFO_EXPORT_PATH)
             file.inputStream().use { input ->
@@ -50,6 +50,7 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
         this.trackInfos = trackInfos
     }
 
+    //todo MTRB track matching
     fun matchTracks(busRoutes: List<BusRoute>): List<BusRoute> {
         val mappedRoutes = busRoutes.map { busRoute ->
             busRoute.copy(trackId = getTrackInfo(busRoute)?.objectId)
@@ -156,12 +157,12 @@ fun main() {
         minibusData = Klaxon().parse<MinibusData>(jsonString)!!
     }
     val govBusData = GovDataParser.getGovBusData(loadExistingData = true, exportToFile = false)
-    val routeMatcher = RouteMatcher(companyBusData, govBusData)
+    val routeMerger = RouteMerger(companyBusData, govBusData)
     val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
-    val busRoutes = trackMatcher.matchTracks(routeMatcher.busRoutes)
+    val busRoutes = trackMatcher.matchTracks(routeMerger.busRoutes)
 
     val database =
-        generateDatabase(busRoutes = busRoutes, busStops = companyBusData.busStops, minibusData = minibusData)
+        generateDatabase(busRoutes = busRoutes, busStops = routeMerger.busStops, minibusData = minibusData)
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
         writeToJsonFile(database.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)

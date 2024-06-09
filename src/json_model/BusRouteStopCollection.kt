@@ -7,7 +7,6 @@ package json_model
 import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
-
 data class BusRouteStopCollection(
     val type: String, @Json(name = "features") val govRouteStops: List<GovRouteStop>
 ) {

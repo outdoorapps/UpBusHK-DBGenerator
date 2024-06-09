@@ -1,8 +1,8 @@
 package util
 
 import okhttp3.*
-import util.Paths.Companion.BUS_ROUTES_GEOJSON_PATH
-import util.Paths.Companion.BUS_ROUTES_GEOJSON_URL
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import util.Utils.Companion.execute
 import java.io.FileOutputStream
 import java.io.IOException
@@ -16,6 +16,7 @@ import javax.net.ssl.X509TrustManager
 
 class HttpUtils {
     companion object {
+        val jsonMediaType = "application/json; charset=utf-8".toMediaType()
         private val okHttpClient = OkHttpClient()
         private val okHttpClientIgnoreCertificate = configureToIgnoreCertificate(OkHttpClient.Builder()).build()
 
@@ -44,6 +45,16 @@ class HttpUtils {
 
         fun get(url: String): String {
             val request = Request.Builder().url(url).build()
+            okHttpClient.newCall(request).execute().use {
+                if (it.isSuccessful && it.body != null) {
+                    return it.body?.string() ?: ""
+                }
+            }
+            return ""
+        }
+
+        fun post(url: String, body: RequestBody): String {
+            val request = Request.Builder().post(body).url(url).build()
             okHttpClient.newCall(request).execute().use {
                 if (it.isSuccessful && it.body != null) {
                     return it.body?.string() ?: ""

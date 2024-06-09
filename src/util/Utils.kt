@@ -108,7 +108,7 @@ class Utils {
             return companyBusData
         }
 
-        fun loadGovBusStops(): List<GovStop> {
+        fun loadGovBusStopsCoordinatesOnly(): List<GovStop> {
             val govStops = mutableListOf<GovStop>()
             val crsTransformationAdapter =
                 CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
@@ -128,7 +128,11 @@ class Utils {
                 )
                 govStops.add(
                     GovStop(
-                        it.properties.stopId, mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
+                        it.properties.stopId,
+                        "",
+                        "",
+                        "",
+                        mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
                     )
                 )
             }
@@ -237,5 +241,9 @@ class Utils {
                 .replace(Regex("\\p{IsHan}\\s*[A-Za-z0-9-]+\\s*\\p{IsHan}")) { x ->
                     x.value.replace(Regex("\\s*"), "")
                 }.trim()
+
+        fun Int.toGovStopId(): String = "gov-$this"
+
+        fun String.toOriginalGovStopId(): Int = this.replace("gov-", "").toInt()
     }
 }

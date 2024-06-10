@@ -122,14 +122,14 @@ class RouteMerger(
                     govRouteSeq = govBusRoute?.routeSeq
                 )
             }.toMutableList()
-            // todo how to determine bounds on the client side from ETA data
+            // todo how to determine bounds on the client side from ETA data, need company stop IDs
             execute("Generating MTRB routes from gov data...") {
                 val mtrbGovRoutes = BusRouteHelper.getMtrbRoutes(govBusData)
                 val mtrbRoutes = mtrbGovRoutes.map {
                     BusRoute(
                         companies = setOf(Company.MTRB),
                         number = it.routeNameE,
-                        bound = if (it.routeSeq == 1) Bound.O else Bound.I,
+                        bound = if (it.routeSeq == 1) Bound.O else Bound.I, //todo not a good way to determine bound, see K73
                         secondaryBound = null,
                         originEn = it.originEn,
                         originChiT = it.originChiT,

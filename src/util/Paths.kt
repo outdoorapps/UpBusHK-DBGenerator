@@ -29,6 +29,7 @@ class Paths {
         val TRACK_INFO_EXPORT_PATH = "${generatedDir}track_info.json.gz"
         val MINIBUS_DATA_EXPORT_PATH = "${generatedDir}minibus.json.gz"
         val GOV_MINIBUS_DATA_EXPORT_PATH = "${generatedDir}gov_minibus.json.gz"
+        val MTRB_DATA_PATH = "${resourcesDir}generated/mtrb.txt"
 
         val DB_ROUTES_STOPS_EXPORT_PATH = "${generatedDir}DB_routes-and-stops.json"
         val DB_PATHS_EXPORT_PATH = "${generatedDir}DB_tracks.json"

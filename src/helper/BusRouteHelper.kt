@@ -207,7 +207,8 @@ class BusRouteHelper {
                     mtrbRoutesValidated.add(it)
                 }
             }
-            // todo K53,K73,K75P has duplicates multiple types?
+            // todo K53,K73,K75P (pick the longer one) has duplicates multiple types?
+            //todo K73 outbound 12 (but gov data only has 9), special route, how to do special route?
             mtrbRoutesValidated.sortBy { it.routeNameE }
             return mtrbRoutesValidated
         }

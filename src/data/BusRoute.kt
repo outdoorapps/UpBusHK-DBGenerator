@@ -23,7 +23,9 @@ data class BusRoute(
     @Json(ignored = true) val stopFarePairs: List<Pair<String, Double?>>,
     @Json(index = 15) val stops: List<String>,
     @Json(index = 16) val secondaryStops: List<String>,
-    @Json(index = 17) val fares: List<Double?>
+    @Json(index = 17) val fares: List<Double?>,
+    @Json(ignored = true) val govRouteId: Int?,
+    @Json(ignored = true) val govRouteSeq: Int?,
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

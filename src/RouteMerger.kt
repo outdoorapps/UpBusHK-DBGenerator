@@ -99,7 +99,8 @@ class RouteMerger(
                     }
                 }
 
-                BusRoute(companies = companies,
+                BusRoute(
+                    companies = companies,
                     number = companyBusRoute.number,
                     bound = companyBusRoute.bound,
                     secondaryBound = secondaryRoute?.bound,
@@ -116,13 +117,17 @@ class RouteMerger(
                     stopFarePairs = stopFarePairs,
                     stops = stopFarePairs.map { it.first },
                     secondaryStops = secondaryStops,
-                    fares = stopFarePairs.map { it.second })
+                    fares = stopFarePairs.map { it.second },
+                    govRouteId = govBusRoute?.routeId,
+                    govRouteSeq = govBusRoute?.routeSeq
+                )
             }.toMutableList()
             // todo how to determine bounds on the client side from ETA data
             execute("Generating MTRB routes from gov data...") {
                 val mtrbGovRoutes = BusRouteHelper.getMtrbRoutes(govBusData)
                 val mtrbRoutes = mtrbGovRoutes.map {
-                    BusRoute(companies = setOf(Company.MTRB),
+                    BusRoute(
+                        companies = setOf(Company.MTRB),
                         number = it.routeNameE,
                         bound = if (it.routeSeq == 1) Bound.O else Bound.I,
                         secondaryBound = null,
@@ -139,7 +144,10 @@ class RouteMerger(
                         stopFarePairs = it.stopFarePairs.map { pair -> Pair(pair.first.toGovStopId(), pair.second) },
                         stops = it.stopFarePairs.map { pair -> pair.first.toGovStopId() },
                         secondaryStops = emptyList(),
-                        fares = it.stopFarePairs.map { pair -> pair.second })
+                        fares = it.stopFarePairs.map { pair -> pair.second },
+                        govRouteId = it.routeId,
+                        govRouteSeq = it.routeSeq
+                    )
                 }
                 stops.addAll(BusStopHelper.getMtrbStops(mtrbRoutes, govBusData))
                 routes.addAll(mtrbRoutes)
@@ -194,7 +202,8 @@ class RouteMerger(
                                 fares.remove(matchingPair)
                             }
                         }
-                        newBusRoute = busRoute.copy(stopFarePairs = generatedList,
+                        newBusRoute = busRoute.copy(
+                            stopFarePairs = generatedList,
                             stops = generatedList.map { it.first }.toList(),
                             fares = generatedList.map { it.second }.toList()
                         )

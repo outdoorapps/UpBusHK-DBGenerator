@@ -50,56 +50,60 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
         this.trackInfos = trackInfos
     }
 
-    //todo MTRB track matching
     fun matchTracks(busRoutes: List<BusRoute>): List<BusRoute> {
-        val mappedRoutes = busRoutes.map { busRoute ->
-            busRoute.copy(trackId = getTrackInfo(busRoute)?.objectId)
-        }
-        println("R8? ${mappedRoutes.filter { it.number == "R8" }.size}")
+        val mappedRoutes = busRoutes.map { busRoute -> busRoute.copy(trackId = getTrackInfo(busRoute)?.objectId) }
 
-        val kmbRouteCount = busRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.KMB) }.size
-        val lwbRouteCount = busRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.LWB) }.size
-        val ctbRouteCount = busRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.CTB) }.size
-        val nlbRouteCount = busRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.NLB) }.size
-        val jointRouteCount = busRoutes.filter { it.companies.size > 1 }.size
+        val kmbRouteCount = busRoutes.count { it.companies.size == 1 && it.companies.contains(Company.KMB) }
+        val lwbRouteCount = busRoutes.count { it.companies.size == 1 && it.companies.contains(Company.LWB) }
+        val ctbRouteCount = busRoutes.count { it.companies.size == 1 && it.companies.contains(Company.CTB) }
+        val nlbRouteCount = busRoutes.count { it.companies.size == 1 && it.companies.contains(Company.NLB) }
+        val mtrbRouteCount = busRoutes.count { it.companies.size == 1 && it.companies.contains(Company.MTRB) }
+        val jointRouteCount = busRoutes.count { it.companies.size > 1 }
 
         val mappedKmbRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.KMB) && it.trackId != null }.size
+            mappedRoutes.count { it.companies.size == 1 && it.companies.contains(Company.KMB) && it.trackId != null }
         val mappedLwRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.LWB) && it.trackId != null }.size
+            mappedRoutes.count { it.companies.size == 1 && it.companies.contains(Company.LWB) && it.trackId != null }
         val mappedCtbRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.CTB) && it.trackId != null }.size
+            mappedRoutes.count { it.companies.size == 1 && it.companies.contains(Company.CTB) && it.trackId != null }
         val mappedNlbRouteCount =
-            mappedRoutes.filter { it.companies.size == 1 && it.companies.contains(Company.NLB) && it.trackId != null }.size
-        val mappedJointRouteCount = mappedRoutes.filter { it.companies.size > 1 && it.trackId != null }.size
+            mappedRoutes.count { it.companies.size == 1 && it.companies.contains(Company.NLB) && it.trackId != null }
+        val mappedMtrbRouteCount =
+            mappedRoutes.count { it.companies.size == 1 && it.companies.contains(Company.MTRB) && it.trackId != null }
+        val mappedJointRouteCount = mappedRoutes.count { it.companies.size > 1 && it.trackId != null }
 
         val unmappedKmbRouteCount = kmbRouteCount - mappedKmbRouteCount
         val unmappedLwRouteCount = lwbRouteCount - mappedLwRouteCount
         val unmappedCtbRouteCount = ctbRouteCount - mappedCtbRouteCount
         val unmappedNlbRouteCount = nlbRouteCount - mappedNlbRouteCount
+        val unmappedMtrbRouteCount = mtrbRouteCount - mappedMtrbRouteCount
         val unmappedJointRouteCount = jointRouteCount - mappedJointRouteCount
 
-        val totalMapped = mappedRoutes.filter { it.trackId != null }.size
-        val totalUnmapped = mappedRoutes.filter { it.trackId == null }.size
+        val totalMapped = mappedRoutes.count { it.trackId != null }
+        val totalUnmapped = mappedRoutes.count { it.trackId == null }
 
-        println("- KMB:$kmbRouteCount (mapped: $mappedKmbRouteCount, unmapped: ${unmappedKmbRouteCount})")
-        println("- LWB:$lwbRouteCount (mapped: $mappedLwRouteCount, unmapped: ${unmappedLwRouteCount})")
-        println("- CTB:$ctbRouteCount (mapped: $mappedCtbRouteCount, unmapped: ${unmappedCtbRouteCount})")
-        println("- NLB:$nlbRouteCount (mapped: $mappedNlbRouteCount, unmapped: ${unmappedNlbRouteCount})")
-        println("- Joint:$jointRouteCount (mapped: $mappedJointRouteCount, unmapped: ${unmappedJointRouteCount})")
+        println("- KMB:$kmbRouteCount (mapped: $mappedKmbRouteCount, unmapped: $unmappedKmbRouteCount)")
+        println("- LWB:$lwbRouteCount (mapped: $mappedLwRouteCount, unmapped: $unmappedLwRouteCount)")
+        println("- CTB:$ctbRouteCount (mapped: $mappedCtbRouteCount, unmapped: $unmappedCtbRouteCount)")
+        println("- NLB:$nlbRouteCount (mapped: $mappedNlbRouteCount, unmapped: $unmappedNlbRouteCount)")
+        println("- MTRB:$mtrbRouteCount (mapped: $mappedMtrbRouteCount, unmapped: $unmappedMtrbRouteCount)")
+        println("- Joint:$jointRouteCount (mapped: $mappedJointRouteCount, unmapped: $unmappedJointRouteCount)")
         println("- Total routes:${busRoutes.size} (mapped: $totalMapped, unmapped: $totalUnmapped)")
         return mappedRoutes
     }
 
     private fun getTrackInfo(busRoute: BusRoute): TrackInfo? {
-        val candidates = trackInfos.filter {
-            busRoute.number == it.routeNameE && isCompaniesMatch(
-                busRoute.companies, it.companyCode
-            ) && isTrackInfoBoundMatch(
-                busRoute, it, TRACK_INFO_ERROR_DISTANCE_METERS, CIRCULAR_ROUTE_ERROR_DISTANCE_METERS
-            )
+        return if (busRoute.govRouteId != null && busRoute.govRouteSeq != null) {
+            trackInfos.find { it.routeId == busRoute.govRouteId && it.routeSeq == busRoute.govRouteSeq }
+        } else {
+            trackInfos.find {
+                busRoute.number == it.routeNameE && isCompaniesMatch(
+                    busRoute.companies, it.companyCode
+                ) && isTrackInfoBoundMatch(
+                    busRoute, it, TRACK_INFO_ERROR_DISTANCE_METERS, CIRCULAR_ROUTE_ERROR_DISTANCE_METERS
+                )
+            }
         }
-        return if (candidates.isNotEmpty()) candidates.first() else null
     }
 
     private fun isCompaniesMatch(companies: Set<Company>, companyCode: String): Boolean {
@@ -125,7 +129,7 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
                 distanceInMeters(govOrigin.coordinate, comDestination.coordinate)
             } else Double.MAX_VALUE
 
-        return originDistance <= errorDistance && destinationDistance <= errorDistance || govOriginComDestinationDistance < circularRouteErrorDistance
+        return (originDistance <= errorDistance && destinationDistance <= errorDistance) || govOriginComDestinationDistance < circularRouteErrorDistance
     }
 }
 
@@ -160,9 +164,7 @@ fun main() {
     val routeMerger = RouteMerger(companyBusData, govBusData)
     val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
     val busRoutes = trackMatcher.matchTracks(routeMerger.busRoutes)
-
-    val database =
-        generateDatabase(busRoutes = busRoutes, busStops = routeMerger.busStops, minibusData = minibusData)
+    val database = generateDatabase(busRoutes = busRoutes, busStops = routeMerger.busStops, minibusData = minibusData)
 
     execute("Writing routes and stops \"$DB_ROUTES_STOPS_EXPORT_PATH\"...") {
         writeToJsonFile(database.toJson(), DB_ROUTES_STOPS_EXPORT_PATH)

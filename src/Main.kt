@@ -39,9 +39,8 @@ import java.io.File
 import kotlin.time.measureTime
 
 const val compressToXZ = true
-const val dbMinAppVersion = "0.9.0" // *Updated every time with breaking changes
+const val dbMinAppVersion = "0.9.0" // *Updated every time when there are breaking changes
 
-// todo MTRB routes
 fun main() {
     BasicConfigurator.configure()
     dirs.forEach {
@@ -67,7 +66,7 @@ fun main() {
         // IV. Match company routes with government record
         val routeMerger = RouteMerger(companyBusData, govBusData)
 
-        // IV. Match company routes with government tracks record
+        // V. Match company routes with government tracks record
         execute("Parsing trackInfo...", true) {
             TrackParser.parseFile(
                 exportTrackInfoToFile = true, parsePaths = false, pathIDsToWrite = null, writeSeparatePathFiles = false
@@ -77,11 +76,11 @@ fun main() {
         val trackMatcher = TrackMatcher(companyBusData = companyBusData, govStops = null)
         val busRoutes = trackMatcher.matchTracks(routeMerger.busRoutes)
 
-        // V. Generate database
+        // VI. Generate database
         val database =
             generateDatabase(busRoutes = busRoutes, busStops = routeMerger.busStops, minibusData = minibusData)
 
-        // V. Write to archive
+        // VII. Write to archive
         execute("Writing routes and stops \"${Paths.DB_ROUTES_STOPS_EXPORT_PATH}\"...") {
             Utils.writeToJsonFile(database.toJson(), Paths.DB_ROUTES_STOPS_EXPORT_PATH)
         }

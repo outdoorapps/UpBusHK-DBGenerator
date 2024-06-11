@@ -18,7 +18,10 @@ import util.Paths.Companion.DATABASE_NAME
 import util.Paths.Companion.DB_PATHS_EXPORT_PATH
 import util.Paths.Companion.DB_ROUTES_STOPS_EXPORT_PATH
 import util.Paths.Companion.resourcesDir
-import java.io.*
+import java.io.File
+import java.io.FileInputStream
+import java.io.FileOutputStream
+import java.io.OutputStreamWriter
 import java.math.RoundingMode
 import java.time.Instant
 import java.time.ZoneOffset
@@ -79,18 +82,17 @@ class Utils {
         }
 
         fun writeToGZ(data: String, path: String) {
-            val output = FileOutputStream(path)
-            output.use {
-                val writer = OutputStreamWriter(GZIPOutputStream(it), Charsets.UTF_8)
-                writer.use { w ->
-                    w.write(data)
+            FileOutputStream(path).use { output ->
+                GZIPOutputStream(output).use { gzOutput ->
+                    OutputStreamWriter(gzOutput, Charsets.UTF_8).use { writer ->
+                        writer.write(data)
+                    }
                 }
             }
         }
 
         fun writeToJsonFile(data: String, path: String) {
-            val output = FileOutputStream(path)
-            output.use {
+            FileOutputStream(path).use {
                 it.write(data.toByteArray())
             }
         }
@@ -155,18 +157,21 @@ class Utils {
             val path = getDatabasePath(version)
 
             execute("Compressing files to archive...") {
-                val output = FileOutputStream(path)
-                val compressionStream =
-                    if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
-                TarArchiveOutputStream(compressionStream).use {
-                    files.forEach { path ->
-                        val file = File(path)
-                        FileInputStream(file).use { input ->
-                            val entry = TarArchiveEntry(file.name)
-                            entry.size = file.length()
-                            it.putArchiveEntry(entry)
-                            input.copyTo(it)
-                            it.closeArchiveEntry()
+                FileOutputStream(path).use { output ->
+                    val compressionStream =
+                        if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
+                    compressionStream.use {
+                        TarArchiveOutputStream(it).use {
+                            files.forEach { path ->
+                                val file = File(path)
+                                FileInputStream(file).use { input ->
+                                    val entry = TarArchiveEntry(file.name)
+                                    entry.size = file.length()
+                                    it.putArchiveEntry(entry)
+                                    input.copyTo(it)
+                                    it.closeArchiveEntry()
+                                }
+                            }
                         }
                     }
                 }
@@ -182,18 +187,18 @@ class Utils {
         }
 
         fun writeToCSV(filePath: String, coordinates: List<List<Double>>) {
-            val output = FileOutputStream(filePath)
-            output.use {
-                val writer: Writer = OutputStreamWriter(output, Charsets.UTF_8)
-                writer.use { w ->
-                    w.write("WKT,name,description\n\"LINESTRING (")
-                    for (i in coordinates.indices) {
-                        w.write("${coordinates[i][1]} ${coordinates[i][0]}")
-                        if (i != coordinates.size - 1) {
-                            w.write(", ")
+            FileOutputStream(filePath).use { output ->
+                OutputStreamWriter(output, Charsets.UTF_8).use { writer ->
+                    writer.use { w ->
+                        w.write("WKT,name,description\n\"LINESTRING (")
+                        for (i in coordinates.indices) {
+                            w.write("${coordinates[i][1]} ${coordinates[i][0]}")
+                            if (i != coordinates.size - 1) {
+                                w.write(", ")
+                            }
                         }
+                        w.write(")\",Line 1,")
                     }
-                    w.write(")\",Line 1,")
                 }
             }
         }
@@ -241,9 +246,5 @@ class Utils {
                 .replace(Regex("\\p{IsHan}\\s*[A-Za-z0-9-]+\\s*\\p{IsHan}")) { x ->
                     x.value.replace(Regex("\\s*"), "")
                 }.trim()
-
-        fun Int.toGovStopId(): String = "gov-$this"
-
-        fun String.toOriginalGovStopId(): Int = this.replace("gov-", "").toInt()
     }
 }

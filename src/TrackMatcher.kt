@@ -177,6 +177,7 @@ fun main() {
             exportTrackInfoToFile = true, parsePaths = true, pathIDsToWrite = pathIDs, writeSeparatePathFiles = false
         )
     }
+
     writeToArchive(
         files = intermediates,
         version = database.version,

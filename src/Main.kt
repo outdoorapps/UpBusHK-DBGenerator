@@ -39,7 +39,7 @@ import java.io.File
 import kotlin.time.measureTime
 
 const val compressToXZ = true
-const val dbMinAppVersion = "0.9.0" // *Updated every time when there are breaking changes
+const val dbMinAppVersion = "1.0.0" // *Updated every time when there are breaking changes
 
 fun main() {
     BasicConfigurator.configure()
@@ -138,6 +138,11 @@ class Main {
                 companyBusData.companyBusRoutes.addAll(routes)
                 routes.size
             }
+            executeWithCount("Parsing MTRB routes...") {
+                val routes = getRoutes(Company.MTRB)
+                companyBusData.companyBusRoutes.addAll(routes)
+                routes.size
+            }
 
             // 2. Get Stops
             val busStopHelper = BusStopHelper()
@@ -153,6 +158,11 @@ class Main {
             }
             executeWithCount("Getting NLB stops...") {
                 val stops = busStopHelper.getNlbStops(companyBusData.companyBusRoutes)
+                companyBusData.busStops.addAll(stops)
+                stops.size
+            }
+            executeWithCount("Parsing MTRB stops...") {
+                val stops = busStopHelper.getMtrbStops()
                 companyBusData.busStops.addAll(stops)
                 stops.size
             }

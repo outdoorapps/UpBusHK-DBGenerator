@@ -1,9 +1,6 @@
 package helper
 
-import com.beust.klaxon.Klaxon
 import data.CompanyBusRoute
-import data.GovBusData
-import data.GovBusRoute
 import json_model.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -11,7 +8,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import okhttp3.Call
-import okhttp3.RequestBody.Companion.toRequestBody
 import util.APIs.Companion.CTB_ALL_ROUTES
 import util.APIs.Companion.CTB_ROUTE_STOP
 import util.APIs.Companion.KMB_ALL_ROUTES
@@ -22,29 +18,18 @@ import util.Bound
 import util.Company
 import util.HttpUtils.Companion.get
 import util.HttpUtils.Companion.getAsync
-import util.HttpUtils.Companion.jsonMediaType
-import util.HttpUtils.Companion.post
-import util.Paths.Companion.MTRB_SCHEDULE_URL
 import util.Utils
 import java.util.concurrent.CountDownLatch
 
 class BusRouteHelper {
     companion object {
-        private val mtrbRouteRegex = "K[0-9]+[A-Z]?|506".toRegex()
         private val mutex = Mutex()
         fun getRoutes(company: Company): List<CompanyBusRoute> {
             val companyBusRoutes = mutableListOf<CompanyBusRoute>()
             try {
-                val url = when (company) {
-                    Company.KMB, Company.LWB -> KMB_ALL_ROUTES
-                    Company.CTB -> CTB_ALL_ROUTES
-                    Company.NLB -> NLB_ALL_ROUTES
-                    Company.MTRB -> return emptyList()
-                }
-                val response = get(url)
-
                 when (company) {
                     Company.KMB, Company.LWB -> {
+                        val response = get(KMB_ALL_ROUTES)
                         val kmbRoutes = KmbRouteResponse.fromJson(response)?.data
                         if (!kmbRoutes.isNullOrEmpty()) {
                             val kmbCompanyBusRoutes = mutableListOf<CompanyBusRoute>()
@@ -59,18 +44,18 @@ class BusRouteHelper {
                                     },
                                     onResponse = { stops ->
                                         val newRoute = CompanyBusRoute(
-                                            Company.KMB,
-                                            it.route,
-                                            it.bound,
-                                            it.origEn,
-                                            it.origTc,
-                                            it.origSc,
-                                            it.destEn,
-                                            it.destTc,
-                                            it.destSc,
-                                            it.serviceType.toInt(),
-                                            null,
-                                            stops
+                                           company =  Company.KMB,
+                                            number = it.route,
+                                            bound = it.bound,
+                                            originEn = it.origEn,
+                                            originChiT = it.origTc,
+                                            originChiS = it.origSc,
+                                            destEn = it.destEn,
+                                            destChiT = it.destTc,
+                                            destChiS = it.destSc,
+                                            serviceType = it.serviceType.toInt(),
+                                            nlbRouteId = null,
+                                            stops = stops
                                         )
                                         CoroutineScope(Dispatchers.IO).launch {
                                             mutex.withLock {
@@ -83,13 +68,14 @@ class BusRouteHelper {
                             countDownLatch.await()
                             kmbCompanyBusRoutes.sortWith(compareBy({ it.number.toInt(Character.MAX_RADIX) },
                                 { it.bound },
-                                { it.kmbServiceType })
+                                { it.serviceType })
                             )
                             companyBusRoutes.addAll(kmbCompanyBusRoutes)
                         }
                     }
 
                     Company.CTB -> {
+                        val response = get(CTB_ALL_ROUTES)
                         val ctbRoutes = CtbRouteResponse.fromJson(response)?.data
                         if (!ctbRoutes.isNullOrEmpty()) {
                             val totalCount = ctbRoutes.size * 2
@@ -106,18 +92,18 @@ class BusRouteHelper {
                                     }, onResponse = { stops ->
                                         if (stops.isNotEmpty()) {
                                             val newRoute = CompanyBusRoute(
-                                                Company.CTB,
-                                                it.route,
-                                                bound,
-                                                if (bound == Bound.O) it.origEn else it.destEn,
-                                                if (bound == Bound.O) it.origTc else it.destTc,
-                                                if (bound == Bound.O) it.origSc else it.destSc,
-                                                if (bound == Bound.O) it.destEn else it.origEn,
-                                                if (bound == Bound.O) it.destTc else it.origTc,
-                                                if (bound == Bound.O) it.destSc else it.origSc,
-                                                null,
-                                                null,
-                                                stops
+                                                company = Company.CTB,
+                                                number = it.route,
+                                                bound = bound,
+                                                originEn = if (bound == Bound.O) it.origEn else it.destEn,
+                                                originChiT = if (bound == Bound.O) it.origTc else it.destTc,
+                                                originChiS = if (bound == Bound.O) it.origSc else it.destSc,
+                                                destEn = if (bound == Bound.O) it.destEn else it.origEn,
+                                                destChiT = if (bound == Bound.O) it.destTc else it.origTc,
+                                                destChiS = if (bound == Bound.O) it.destSc else it.origSc,
+                                                serviceType = null,
+                                                nlbRouteId = null,
+                                                stops = stops
                                             )
                                             CoroutineScope(Dispatchers.IO).launch {
                                                 mutex.withLock {
@@ -146,6 +132,7 @@ class BusRouteHelper {
                     }
 
                     Company.NLB -> {
+                        val response = get(NLB_ALL_ROUTES)
                         val nlbRoutes = NlbRouteResponse.fromJson(response)?.routes?.toMutableList()
                             ?.sortedBy { it.routeId.toInt() }
                         if (!nlbRoutes.isNullOrEmpty()) {
@@ -166,18 +153,18 @@ class BusRouteHelper {
                                 val stops = getNlbRouteStops(it.routeId)
                                 nlbCompanyBusRoutes.add(
                                     CompanyBusRoute(
-                                        Company.NLB,
-                                        it.routeNo,
-                                        bound,
-                                        originEn,
-                                        it.routeNameC.split('>')[0].trim(),
-                                        it.routeNameS.split('>')[0].trim(),
-                                        destEn,
-                                        it.routeNameC.split('>')[1].trim(),
-                                        it.routeNameS.split('>')[1].trim(),
-                                        null,
-                                        it.routeId,
-                                        stops
+                                        company = Company.NLB,
+                                        number = it.routeNo,
+                                        bound = bound,
+                                        originEn = originEn,
+                                        originChiT = it.routeNameC.split('>')[0].trim(),
+                                        originChiS = it.routeNameS.split('>')[0].trim(),
+                                        destEn = destEn,
+                                        destChiT = it.routeNameC.split('>')[1].trim(),
+                                        destChiS = it.routeNameS.split('>')[1].trim(),
+                                        serviceType = null,
+                                        nlbRouteId = it.routeId,
+                                        stops = stops
                                     )
                                 )
                             }
@@ -185,32 +172,34 @@ class BusRouteHelper {
                         }
                     }
 
-                    else -> return emptyList()
+                    Company.MTRB -> {
+                        val mtrbRouteMap = MtrbDataParser.parseMtrbData()
+                        mtrbRouteMap.forEach { (routeName, boundMap) ->
+                            boundMap.forEach { (bound, stops) ->
+                                val origin = stops.first()
+                                val dest = stops.last()
+                                companyBusRoutes.add(
+                                    CompanyBusRoute(company = Company.MTRB,
+                                        number = routeName,
+                                        bound = bound,
+                                        originEn = origin.engName,
+                                        originChiT = origin.chiTName,
+                                        originChiS = origin.chiSName,
+                                        destEn = dest.engName,
+                                        destChiT = dest.chiTName,
+                                        destChiS = dest.chiSName,
+                                        serviceType = null,
+                                        nlbRouteId = null,
+                                        stops = stops.map { it.stopId })
+                                )
+                            }
+                        }
+                    }
                 }
             } catch (e: Exception) {
-                println("Error occurred while getting ${company.name.uppercase()} routes \"${object {}.javaClass.enclosingMethod.name}\" : " + e.stackTraceToString())
+                println("Error occurred while getting ${company.name.uppercase()} routes \"${object {}.javaClass.enclosingMethod.name}\" : ${e.stackTraceToString()}")
             }
             return companyBusRoutes
-        }
-
-        fun getMtrbRoutes(govBusData: GovBusData): List<GovBusRoute> {
-            val mtrbRoutes = govBusData.govBusRoutes.filter { e -> e.routeNameE.matches(mtrbRouteRegex) }
-            val mtrbRoutesValidated = mutableListOf<GovBusRoute>()
-            mtrbRoutes.forEach {
-                val response = post(
-                    MTRB_SCHEDULE_URL, MtrbRequestBody("en", it.routeNameE).toJson().toRequestBody(
-                        jsonMediaType
-                    )
-                )
-                val mtrbScheduleResponse = Klaxon().parse<MtrbScheduleResponse>(response)
-                if (mtrbScheduleResponse?.footerRemarks != null) {
-                    mtrbRoutesValidated.add(it)
-                }
-            }
-            // todo K53,K73,K75P (pick the longer one) has duplicates multiple types?
-            //todo K73 outbound 12 (but gov data only has 9), special route, how to do special route?
-            mtrbRoutesValidated.sortBy { it.routeNameE }
-            return mtrbRoutesValidated
         }
 
         private fun getNlbRouteStops(number: String): List<String> {

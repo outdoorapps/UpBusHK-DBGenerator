@@ -1,6 +1,8 @@
 package helper
 
-import data.*
+import data.BusStop
+import data.CompanyBusData
+import data.CompanyBusRoute
 import json_model.CtbStopResponse
 import json_model.KmbStopResponse
 import json_model.NlbRouteStopResponse
@@ -16,39 +18,12 @@ import util.Company
 import util.HttpUtils.Companion.get
 import util.HttpUtils.Companion.getAsync
 import util.Patch.Companion.accountedStops
-import util.Patch.Companion.patchStops
 import util.Utils
-import util.Utils.Companion.toGovStopId
-import util.Utils.Companion.toOriginalGovStopId
 import java.util.concurrent.CountDownLatch
 
 class BusStopHelper {
     companion object {
         private const val TIMEOUT_SECOND = 120L
-
-        fun getMtrbStops(mtrbRoutes: List<BusRoute>, govBusData: GovBusData): List<BusStop> {
-            val mtrbStops = mutableListOf<BusStop>()
-            val stopIDs = mutableSetOf<Int>()
-            mtrbRoutes.forEach {
-                stopIDs.addAll(it.stops.map { generatedStopID -> generatedStopID.toOriginalGovStopId() })
-            }
-            stopIDs.forEach { stopId ->
-                val govStop = govBusData.govStops.find { it.stopId == stopId }
-                if (govStop != null) {
-                    mtrbStops.add(
-                        BusStop(
-                            company = Company.MTRB,
-                            stopId = stopId.toGovStopId(),
-                            engName = govStop.stopNameE,
-                            chiTName = govStop.stopNameC,
-                            chiSName = govStop.stopNameS,
-                            coordinate = govStop.coordinate
-                        )
-                    )
-                }
-            }
-            return mtrbStops
-        }
     }
 
     private val mutex = Mutex()
@@ -83,16 +58,6 @@ class BusStopHelper {
         val ctbStops = mutableListOf<BusStop>()
         val ctbBusCompanyRoutes = companyBusRoutes.filter { it.company == Company.CTB }
         ctbBusCompanyRoutes.forEach { ctbStopIDs.addAll(it.stops) }
-
-        println("Patching CTB stops...")
-        val stopIDs = ctbStopIDs.toList()
-        stopIDs.forEach { ctbStopID ->
-            if (patchStops.any { it.stopId == ctbStopID }) {
-                ctbStopIDs.remove(ctbStopID)
-            }
-        }
-        ctbStops.addAll(patchStops)
-        println("- Patch data added for stops: ${patchStops.map { it.stopId }}")
 
         do {
             ctbStops.addAll(getCtbStopsAsync())
@@ -201,26 +166,38 @@ class BusStopHelper {
         return nlbStops
     }
 
-    fun validateStops(companyBusData: CompanyBusData): List<String> {
+    fun getMtrbStops(): List<BusStop> {
+        val busStops = mutableListOf<BusStop>()
+        val mtrbRouteMap = MtrbDataParser.parseMtrbData()
+        mtrbRouteMap.forEach { (_, boundMap) ->
+            boundMap.forEach { (_, stops) ->
+                busStops.addAll(stops)
+            }
+        }
+        return busStops
+    }
+
+    fun validateStops(companyBusData: CompanyBusData): Set<String> {
         print("Validating stops...")
-        val noMatchStops = mutableListOf<String>()
+        val missingStops = mutableSetOf<String>()
+        // Find all stops that are in a route but missing in the database
         companyBusData.companyBusRoutes.forEach {
             it.stops.forEach { stop ->
                 if (!companyBusData.busStops.any { busStop -> busStop.stopId == stop }) {
-                    if (!noMatchStops.contains(stop)) noMatchStops.add(stop)
+                    missingStops.add(stop)
                 }
             }
         }
 
         val unaccountedStops = mutableListOf<String>()
-        if (noMatchStops.isNotEmpty()) {
-            noMatchStops.forEach { if (!accountedStops.contains(it)) unaccountedStops.add(it) }
+        if (missingStops.isNotEmpty()) {
+            missingStops.forEach { if (!accountedStops.contains(it)) unaccountedStops.add(it) }
         }
         if (unaccountedStops.isNotEmpty()) {
-            println("Stops that are not in the database and are unaccounted for: $unaccountedStops")
+            println("Stops that are not in the database and are unaccounted for their absence: $unaccountedStops")
         } else {
             println("Success")
         }
-        return noMatchStops
+        return missingStops
     }
 }

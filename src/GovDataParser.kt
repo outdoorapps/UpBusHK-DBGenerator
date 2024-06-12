@@ -171,8 +171,7 @@ class GovDataParser {
                             stopNameC = info.stopNameC,
                             stopNameS = info.stopNameS,
                             coordinate = listOf(
-                                routeStop.geometry.longLatCoordinates[1],
-                                routeStop.geometry.longLatCoordinates[0]
+                                routeStop.geometry.longLatCoordinates[1], routeStop.geometry.longLatCoordinates[0]
                             )
                         )
                     }
@@ -246,7 +245,7 @@ class GovDataParser {
             execute("Organizing minibus route-stop data into routes and stops...") {
                 govRouteStops.forEach { routeStop ->
                     val info = routeStop.info
-                    val stop = minibusStops.find { it.stopId == info.stopID }
+                    val stop = minibusStops.find { it.stopId.toInt() == info.stopID }
                     if (stop == null) {
                         val coordinate = listOf(
                             routeStop.geometry.longLatCoordinates[1], routeStop.geometry.longLatCoordinates[0]
@@ -262,7 +261,7 @@ class GovDataParser {
 
                         minibusStops.add(
                             MinibusStop(
-                                stopId = info.stopID,
+                                stopId = info.stopID.toString(),
                                 engName = stopChosen.info.stopNameE,
                                 chiTName = nameTc,
                                 chiSName = nameSc,
@@ -280,7 +279,7 @@ class GovDataParser {
                             val endStop = routeStopsOfRoute.last().info
 
                             minibusRoutes.add(
-                                MiniBusRoute(routeId = info.routeID,
+                                MiniBusRoute(routeId = info.routeID.toString(),
                                     region = Region.fromValue(info.district),
                                     number = info.routeNameE,
                                     bound = if (info.routeSeq == 1) Bound.O else Bound.I,
@@ -291,7 +290,7 @@ class GovDataParser {
                                     destChiT = endStop.stopNameC,
                                     destChiS = endStop.stopNameS,
                                     fullFare = info.fullFare,
-                                    stops = routeStopsOfRoute.map { it.info.stopID })
+                                    stops = routeStopsOfRoute.map { it.info.stopID.toString() })
                             )
                         }
                     }
@@ -309,7 +308,7 @@ class GovDataParser {
         private fun isOfMinibusRoute(govRouteStop: GovRouteStop, miniBusRoute: MiniBusRoute): Boolean {
             val routeSeq = if (miniBusRoute.bound == Bound.O) 1 else 2
             val info = govRouteStop.info
-            return miniBusRoute.routeId == info.routeID && routeSeq == info.routeSeq && miniBusRoute.region.value == info.district
+            return miniBusRoute.routeId.toInt() == info.routeID && routeSeq == info.routeSeq && miniBusRoute.region.value == info.district
         }
     }
 }

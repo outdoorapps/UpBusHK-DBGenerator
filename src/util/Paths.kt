@@ -17,7 +17,7 @@ class Paths {
         val govDataDir = "${resourcesDir}govData${File.separator}"
         val generatedDir = "${resourcesDir}generated${File.separator}"
         val debugDir = "${resourcesDir}debug${File.separator}"
-        val dataDir = "${resourcesDir}debug${File.separator}"
+        private val dataDir = "data${File.separator}"
 
         val BUS_ROUTES_GEOJSON_PATH = "${govDataDir}BusRoute_GEOJSON.zip"
         val BUS_STOPS_GEOJSON_PATH = "${govDataDir}CoordinateofBusStopLocation_GEOJSON.zip"
@@ -30,7 +30,7 @@ class Paths {
         val TRACK_INFO_EXPORT_PATH = "${generatedDir}track_info.json.gz"
         val MINIBUS_DATA_EXPORT_PATH = "${generatedDir}minibus.json.gz"
         val GOV_MINIBUS_DATA_EXPORT_PATH = "${generatedDir}gov_minibus.json.gz"
-        val MTRB_DATA_PATH = "${dataDir}generated/mtrb.txt"
+        val MTRB_DATA_PATH = "${dataDir}mtrb.txt"
 
         val DB_ROUTES_STOPS_EXPORT_PATH = "${generatedDir}DB_routes-and-stops.json"
         val DB_PATHS_EXPORT_PATH = "${generatedDir}DB_tracks.json"

@@ -33,7 +33,7 @@ class MinibusHelper {
     }
 
     private val mutex = Mutex()
-    private val stopIDs = mutableSetOf<Int>()
+    private val stopIDs = mutableSetOf<String>()
 
     fun getMinibusData(exportToFile: Boolean, exportIntermediates: Boolean): MinibusData {
         // 1. Get all minibus routes
@@ -44,7 +44,7 @@ class MinibusHelper {
         }
 
         // 2. Get all stops that needed info
-        val stopIDsNeededInfo = mutableSetOf<Int>()
+        val stopIDsNeededInfo = mutableSetOf<String>()
         minibusRoutes.forEach {
             stopIDsNeededInfo.addAll(it.stops)
         }
@@ -119,7 +119,7 @@ class MinibusHelper {
                             val stops = MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops
                             val bound = if (direction.routeSeq == 1) Bound.O else Bound.I  // Can only be 1 or 2
 
-                            val newRoute = MiniBusRoute(routeId = routeInfo.routeID,
+                            val newRoute = MiniBusRoute(routeId = "${routeInfo.routeID}",
                                 region = region,
                                 number = number,
                                 bound = bound,
@@ -130,7 +130,7 @@ class MinibusHelper {
                                 destChiT = direction.destTc,
                                 destChiS = ZhConverterUtil.toSimple(direction.destTc),
                                 fullFare = null,
-                                stops = if (stops.isNullOrEmpty()) listOf() else stops.map { stop -> stop.stopID })
+                                stops = if (stops.isNullOrEmpty()) listOf() else stops.map { stop -> "${stop.stopID}" })
 
                             CoroutineScope(Dispatchers.IO).launch {
                                 mutex.withLock {
@@ -157,7 +157,7 @@ class MinibusHelper {
         return list
     }
 
-    private fun getStops(stopIDsNeededInfo: Set<Int>): List<MinibusStop> {
+    private fun getStops(stopIDsNeededInfo: Set<String>): List<MinibusStop> {
         this.stopIDs.clear()
         this.stopIDs.addAll(stopIDsNeededInfo)
         val list = mutableListOf<MinibusStop>()
@@ -181,7 +181,7 @@ class MinibusHelper {
         val start = System.currentTimeMillis()
 
         stopIDs.forEach { stopId ->
-            getAsync("$MINIBUS_STOP_URL/${stopId}", onFailure = {
+            getAsync("$MINIBUS_STOP_URL/$stopId", onFailure = {
                 countDownLatch.countDown()
                 // println("Request for minibus stopID $stopId failed")
             }, onResponse = { minibusStopResponse ->

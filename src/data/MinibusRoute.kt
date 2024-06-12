@@ -6,7 +6,7 @@ import util.Bound
 import util.Region
 
 data class MiniBusRoute(
-    @Json(index = 1) val routeId: Int,
+    @Json(index = 1) val routeId: String,
     @Json(index = 2) val region: Region,
     @Json(index = 3) val number: String,
     @Json(index = 4) val bound: Bound,
@@ -17,7 +17,7 @@ data class MiniBusRoute(
     @Json(index = 9) val destChiT: String,
     @Json(index = 10) val destChiS: String,
     @Json(index = 11) val fullFare: Double?,
-    @Json(index = 12) val stops: List<Int>
+    @Json(index = 12) val stops: List<String>
 ) {
     fun toJson() = Klaxon().toJsonString(this)
 }

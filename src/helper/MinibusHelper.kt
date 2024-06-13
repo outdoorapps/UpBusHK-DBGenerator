@@ -119,7 +119,7 @@ class MinibusHelper {
                             val stops = MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops
                             val bound = if (direction.routeSeq == 1) Bound.O else Bound.I  // Can only be 1 or 2
 
-                            val newRoute = MiniBusRoute(routeId = "${routeInfo.routeID}",
+                            val newRoute = MiniBusRoute(govRouteId = "${routeInfo.routeID}",
                                 region = region,
                                 number = number,
                                 bound = bound,

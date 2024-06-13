@@ -279,7 +279,7 @@ class GovDataParser {
                             val endStop = routeStopsOfRoute.last().info
 
                             minibusRoutes.add(
-                                MiniBusRoute(routeId = info.routeID.toString(),
+                                MiniBusRoute(govRouteId = info.routeID.toString(),
                                     region = Region.fromValue(info.district),
                                     number = info.routeNameE,
                                     bound = if (info.routeSeq == 1) Bound.O else Bound.I,
@@ -308,7 +308,7 @@ class GovDataParser {
         private fun isOfMinibusRoute(govRouteStop: GovRouteStop, miniBusRoute: MiniBusRoute): Boolean {
             val routeSeq = if (miniBusRoute.bound == Bound.O) 1 else 2
             val info = govRouteStop.info
-            return miniBusRoute.routeId.toInt() == info.routeID && routeSeq == info.routeSeq && miniBusRoute.region.value == info.district
+            return miniBusRoute.govRouteId.toInt() == info.routeID && routeSeq == info.routeSeq && miniBusRoute.region.value == info.district
         }
     }
 }

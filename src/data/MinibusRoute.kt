@@ -6,7 +6,7 @@ import util.Bound
 import util.Region
 
 data class MiniBusRoute(
-    @Json(index = 1) val routeId: String,
+    @Json(index = 1) val govRouteId: String,
     @Json(index = 2) val region: Region,
     @Json(index = 3) val number: String,
     @Json(index = 4) val bound: Bound,

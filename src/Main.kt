@@ -105,12 +105,12 @@ fun main() {
         )
 
         // VI. Upload to Firebase and marked changes
-//        val dbFile = getDatabaseFile()
-//        if (dbFile != null) {
-//            upload(dbFile, database.version)
-//        } else {
-//            println("Database file not found, nothing is uploaded")
-//        }
+        val dbFile = getDatabaseFile()
+        if (dbFile != null) {
+            upload(dbFile, database.version)
+        } else {
+            println("Database file not found, nothing is uploaded")
+        }
     }
     println("Finished all tasks in $t")
 }

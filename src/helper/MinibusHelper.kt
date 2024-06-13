@@ -112,29 +112,30 @@ class MinibusHelper {
                 }, onResponse = {
                     val data = MinibusRouteInfoResponse.fromJson(it)?.data
                     if (!data.isNullOrEmpty()) {
-                        val routeInfo = data[0]
-                        routeInfo.directions.forEach { direction ->
-                            val routeStopResponse =
-                                get("$MINIBUS_ROUTE_STOP_URL/${routeInfo.routeID}/${direction.routeSeq}")
-                            val stops = MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops
-                            val bound = if (direction.routeSeq == 1) Bound.O else Bound.I  // Can only be 1 or 2
+                        data.forEach { routeInfo ->
+                            routeInfo.directions.forEach { direction ->
+                                val routeStopResponse =
+                                    get("$MINIBUS_ROUTE_STOP_URL/${routeInfo.routeID}/${direction.routeSeq}")
+                                val stops = MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops
+                                val bound = if (direction.routeSeq == 1) Bound.O else Bound.I  // Can only be 1 or 2
 
-                            val newRoute = MiniBusRoute(govRouteId = "${routeInfo.routeID}",
-                                region = region,
-                                number = number,
-                                bound = bound,
-                                originEn = direction.origEn,
-                                originChiT = direction.origTc,
-                                originChiS = ZhConverterUtil.toSimple(direction.origTc),
-                                destEn = direction.destEn,
-                                destChiT = direction.destTc,
-                                destChiS = ZhConverterUtil.toSimple(direction.destTc),
-                                fullFare = null,
-                                stops = if (stops.isNullOrEmpty()) listOf() else stops.map { stop -> "${stop.stopID}" })
+                                val newRoute = MiniBusRoute(govRouteId = "${routeInfo.routeID}",
+                                    region = region,
+                                    number = number,
+                                    bound = bound,
+                                    originEn = direction.origEn,
+                                    originChiT = direction.origTc,
+                                    originChiS = ZhConverterUtil.toSimple(direction.origTc),
+                                    destEn = direction.destEn,
+                                    destChiT = direction.destTc,
+                                    destChiS = ZhConverterUtil.toSimple(direction.destTc),
+                                    fullFare = null,
+                                    stops = if (stops.isNullOrEmpty()) listOf() else stops.map { stop -> "${stop.stopID}" })
 
-                            CoroutineScope(Dispatchers.IO).launch {
-                                mutex.withLock {
-                                    list.add(newRoute)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    mutex.withLock {
+                                        list.add(newRoute)
+                                    }
                                 }
                             }
                         }

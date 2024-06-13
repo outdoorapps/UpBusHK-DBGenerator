@@ -123,6 +123,9 @@ class MinibusHelper {
                                     region = region,
                                     number = number,
                                     bound = bound,
+                                    descriptionEn = routeInfo.descriptionEn.trim(),
+                                    descriptionChiT = routeInfo.descriptionTc.trim(),
+                                    descriptionChiS = routeInfo.descriptionSc.trim(),
                                     originEn = direction.origEn,
                                     originChiT = direction.origTc,
                                     originChiS = ZhConverterUtil.toSimple(direction.origTc),
@@ -227,4 +230,7 @@ class MinibusHelper {
 
 fun main() {
     val minibusData = MinibusHelper().getMinibusData(exportToFile = true, exportIntermediates = true)
+    val descriptionSet = mutableSetOf<String?>()
+    minibusData.minibusRoutes.forEach { descriptionSet.add(it.descriptionChiT) }
+    println(descriptionSet)
 }

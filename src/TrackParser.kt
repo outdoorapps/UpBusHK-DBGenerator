@@ -4,8 +4,8 @@ import com.programmerare.crsConstants.constantsByAreaNameNumber.v10_027.EpsgNumb
 import com.programmerare.crsTransformations.compositeTransformations.CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess
 import com.programmerare.crsTransformations.coordinate.CrsCoordinate
 import com.programmerare.crsTransformations.coordinate.eastingNorthing
-import data.Track
 import data.GovTrack
+import data.Track
 import data.TrackInfo
 import json_model.CRS
 import json_model.CRSProperties
@@ -100,25 +100,23 @@ class TrackParser {
                                                 if (writeSeparatePathFiles) {
                                                     val out =
                                                         FileOutputStream("$debugDir${route.trackInfo.objectId}.json")
-                                                    val simplifiedCoordinates =
-                                                        simplify(multilineToCoordinates(route.multiLineString))
-                                                    val track =
-                                                        Track(route.trackInfo.objectId, simplifiedCoordinates)
+                                                    val track = getSimplifiedTrack(
+                                                        route.trackInfo.objectId, route.multiLineString
+                                                    )
                                                     out.use { out.write(track.toJson().toByteArray()) }
                                                     pathsWritten++
-                                                    pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
+                                                    pathSizeMap[route.trackInfo] = track.coordinates.size
                                                 } else {
-                                                    if (pathFOS != null && (pathIDsToWrite == null || pathIDsToWrite.contains(
+                                                    if (pathFOS != null) if (pathIDsToWrite == null || pathIDsToWrite.contains(
                                                             route.trackInfo.objectId
-                                                        ))
+                                                        )
                                                     ) {
-                                                        val simplifiedCoordinates =
-                                                            simplify(multilineToCoordinates(route.multiLineString))
-                                                        val track =
-                                                            Track(route.trackInfo.objectId, simplifiedCoordinates)
+                                                        val track = getSimplifiedTrack(
+                                                            route.trackInfo.objectId, route.multiLineString
+                                                        )
                                                         pathFOS.write(track.toJson().toByteArray())
                                                         pathsWritten++
-                                                        pathSizeMap[route.trackInfo] = simplifiedCoordinates.size
+                                                        pathSizeMap[route.trackInfo] = track.coordinates.size
 
                                                         // Determine whether a "," should be added
                                                         if (pathIDsToWrite == null) {
@@ -147,11 +145,15 @@ class TrackParser {
             }
             if (pathFOS != null) {
                 println("- $pathsWritten tracks written")
-                println("-- Tracks with >100 coordinates:${pathSizeMap.values.filter { it > 100 }.size}")
-                println("-- Tracks with >500 coordinates:${pathSizeMap.values.filter { it > 500 }.size}")
-                println("-- Tracks with >1000 coordinates:${pathSizeMap.values.filter { it > 1000 }.size}")
-                println("-- Tracks with >2000 coordinates:${pathSizeMap.values.filter { it > 2000 }.size}")
-                println("-- Tracks with >3000 coordinates:${pathSizeMap.values.filter { it > 3000 }.size}")
+                println("-- Tracks with <100 coordinates:${pathSizeMap.values.count { it < 100 }}")
+                println("-- Tracks with >100 coordinates:${pathSizeMap.values.count { it > 100 }}")
+                println("-- Tracks with >500 coordinates:${pathSizeMap.values.count { it > 500 }}")
+                println("-- Tracks with >1000 coordinates:${pathSizeMap.values.count { it > 1000 }}")
+                println("-- Tracks with >2000 coordinates:${pathSizeMap.values.count { it > 2000 }}")
+                println("-- Tracks with >3000 coordinates:${pathSizeMap.values.count { it > 3000 }}")
+                println("-- Tracks with >10000 coordinates:${pathSizeMap.values.count { it > 10000 }}")
+                println("-- Tracks with >50000 coordinates:${pathSizeMap.values.count { it > 50000 }}")
+                println("-- Tracks with >100000 coordinates:${pathSizeMap.values.count { it > 100000 }}")
                 println("-- Max:${pathSizeMap.values.maxOrNull()}, Min:${pathSizeMap.values.minOrNull()}")
             }
 
@@ -253,6 +255,11 @@ class TrackParser {
             val lat = crsCoordinate.getLatitude().roundCoordinate()
             val long = crsCoordinate.getLongitude().roundCoordinate()
             listOf(lat, long)
+        }
+
+        private fun getSimplifiedTrack(trackId: Int, multiline: List<CrsCoordinate>): Track {
+            val simplifiedCoordinates = simplify(multilineToCoordinates(multiline))
+            return Track(trackId, simplifiedCoordinates)
         }
     }
 }

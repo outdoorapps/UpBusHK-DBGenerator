@@ -39,7 +39,7 @@ import java.io.File
 import kotlin.time.measureTime
 
 const val compressToXZ = true
-const val dbMinAppVersion = "1.0.0" // *Updated every time when there are breaking changes
+const val dbMinAppVersion = "1.2.0" // *Updated every time when there are breaking changes
 
 fun main() {
     BasicConfigurator.configure()

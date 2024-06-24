@@ -53,10 +53,10 @@ fun main() {
     val num = 1339
     val file = File("$debugDir$num.json")
     val track = Klaxon().parse<Track>(file.readText())!!
-    Utils.execute("Simplifying path - ${track.coordinate.size} point...") {
-        val result = simplify(track.coordinate)
+    Utils.execute("Simplifying path - ${track.coordinates.size} point...") {
+        val result = simplify(track.coordinates)
         writeToCSV("${debugDir}csv/$num.csv", result)
-        writeToCSV("${debugDir}csv/$num-ori.csv", track.coordinate)
+        writeToCSV("${debugDir}csv/$num-ori.csv", track.coordinates)
         println(result.size)
     }
 }

@@ -115,7 +115,7 @@ class MinibusHelper {
                         data.forEach { routeInfo ->
                             routeInfo.directions.forEach { direction ->
                                 val routeStopResponse =
-                                    get("$MINIBUS_ROUTE_STOP_URL/${routeInfo.routeID}/${direction.routeSeq}")
+                                    get("$MINIBUS_ROUTE_STOP_URL/${routeInfo.routeID}/${direction.routeSeq}") //todo make it failsafe
                                 val stops = MinibusRouteStopResponse.fromJson(routeStopResponse)?.data?.routeStops
                                 val bound = if (direction.routeSeq == 1) Bound.O else Bound.I  // Can only be 1 or 2
 

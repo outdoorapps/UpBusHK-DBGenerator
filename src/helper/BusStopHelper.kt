@@ -26,9 +26,6 @@ class BusStopHelper {
         private const val TIMEOUT_SECOND = 120L
     }
 
-    private val mutex = Mutex()
-    private val ctbStopIDs = mutableSetOf<String>()
-
     fun getKmbStops(): List<BusStop> {
         val busStops = mutableListOf<BusStop>()
         try {
@@ -54,13 +51,14 @@ class BusStopHelper {
     }
 
     fun getCtbStops(companyBusRoutes: List<CompanyBusRoute>): List<BusStop> {
-        ctbStopIDs.clear()
+        val ctbStopIDs = mutableSetOf<String>()
         val ctbStops = mutableListOf<BusStop>()
         val ctbBusCompanyRoutes = companyBusRoutes.filter { it.company == Company.CTB }
         ctbBusCompanyRoutes.forEach { ctbStopIDs.addAll(it.stops) }
 
         do {
-            ctbStops.addAll(getCtbStopsAsync())
+            ctbStops.addAll(getCtbStopsAsync(ctbStopIDs))
+            ctbStopIDs.removeAll(ctbStops.map { it.stopId }.toSet())
             val size = ctbStopIDs.size
             if (size != 0) {
                 println("$size errors received for CTB stop IDs $ctbStopIDs, waiting for ${TIMEOUT_SECOND}s before restarting...")
@@ -72,11 +70,12 @@ class BusStopHelper {
         return ctbStops
     }
 
-    private fun getCtbStopsAsync(): List<BusStop> {
+    private fun getCtbStopsAsync(ctbStopIDs: Set<String>): List<BusStop> {
         val list = mutableListOf<BusStop>()
 
         val totalCount = ctbStopIDs.size
         val countDownLatch = CountDownLatch(totalCount)
+        val mutex = Mutex()
 
         val start = System.currentTimeMillis()
         ctbStopIDs.forEach { stopId ->
@@ -102,7 +101,6 @@ class BusStopHelper {
                         mutex.withLock {
                             if (newStop != null) {
                                 list.add(newStop)
-                                ctbStopIDs.remove(stopId)
                             }
                             countDownLatch.countDown()
                             val finishCount = totalCount - countDownLatch.count.toInt()
@@ -126,6 +124,7 @@ class BusStopHelper {
     fun getNlbStops(companyBusRoutes: List<CompanyBusRoute>): List<BusStop> {
         val nlbRoutes = companyBusRoutes.filter { x -> x.company == Company.NLB }
         val nlbStops = mutableListOf<BusStop>()
+        val mutex = Mutex()
 
         val countDownLatch = CountDownLatch(nlbRoutes.size)
         nlbRoutes.forEach { busCompanyRoute ->

@@ -327,11 +327,11 @@ class RouteMerger(
     private fun getGovBusRouteCandidates(companyBusRoute: CompanyBusRoute): List<GovBusRoute> =
         govBusData.govBusRoutes.filter { info ->
             when (companyBusRoute.company) {
-                Company.KMB, Company.LWB -> (info.companyCode.contains(companyBusRoute.company.value) || info.companyCode.contains(
-                    Company.LWB.value
+                Company.KMB, Company.LWB -> (info.companyCode.contains(companyBusRoute.company.name) || info.companyCode.contains(
+                    Company.LWB.name
                 )) && info.routeNameE == companyBusRoute.number
 
-                Company.CTB, Company.NLB -> info.companyCode.contains(companyBusRoute.company.value) && info.routeNameE == companyBusRoute.number
+                Company.CTB, Company.NLB -> info.companyCode.contains(companyBusRoute.company.name) && info.routeNameE == companyBusRoute.number
                 Company.MTRB -> info.routeNameE == companyBusRoute.number
             }
         }

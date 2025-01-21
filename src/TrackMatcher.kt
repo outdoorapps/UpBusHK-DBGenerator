@@ -107,7 +107,7 @@ class TrackMatcher(companyBusData: CompanyBusData?, govStops: List<GovStop>?) {
     }
 
     private fun isCompaniesMatch(companies: Set<Company>, companyCode: String): Boolean {
-        val results = companies.map { companyCode.contains(it.value) }
+        val results = companies.map { companyCode.contains(it.name) }
         return !results.contains(false)
     }
 

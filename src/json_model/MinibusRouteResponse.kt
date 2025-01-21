@@ -8,7 +8,7 @@ import util.Region
 @Suppress("UNCHECKED_CAST")
 private val klaxon = Klaxon().convert(MinibusRouteList::class, {
     MinibusRouteList(
-        routes = it.obj!!.obj("routes")!!.map { (k, v) -> Region.fromValue(k) to (v as List<String>) }.toMap(),
+        routes = it.obj!!.obj("routes")!!.map { (k, v) -> Region.valueOf(k) to (v as List<String>) }.toMap(),
         dataTimestamp = it.objString("data_timestamp")
     )
 }, { it.toString() })

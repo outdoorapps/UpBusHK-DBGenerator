@@ -5,7 +5,7 @@ import com.beust.klaxon.Klaxon
 import util.Bound
 import util.KlaxonUtils.Companion.convert
 
-private val klaxon = Klaxon().convert(Bound::class, { Bound.fromValue(it.string!!) }, { "\"${it.value}\"" })
+private val klaxon = Klaxon().convert(Bound::class, { Bound.valueOf(it.string!!) }, { "\"${it.name}\"" })
 
 data class KmbRouteResponse(
     val type: String, val version: String,

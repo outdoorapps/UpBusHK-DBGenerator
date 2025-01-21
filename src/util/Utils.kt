@@ -143,7 +143,7 @@ class Utils {
         }
 
         fun getCompanies(companyCode: String): Set<Company> =
-            companyCode.split("+").map { Company.fromValue(it) }.toSet()
+            companyCode.split("+").map { Company.valueOf(it) }.toSet()
 
         fun generateVersionNumber(): String = dateTimeFormatter.format(Instant.now().truncatedTo(ChronoUnit.SECONDS))
 

@@ -106,7 +106,7 @@ class MinibusHelper {
 
         routes?.forEach { (region, routesInRegion) ->
             routesInRegion.forEach { number ->
-                getAsync("$MINIBUS_ROUTE_URL/${region.value}/$number", onFailure = {
+                getAsync("$MINIBUS_ROUTE_URL/${region.name}/$number", onFailure = {
                     countDownLatch.countDown()
                     println("- Request minibus info for $region $number failed")
                 }, onResponse = {

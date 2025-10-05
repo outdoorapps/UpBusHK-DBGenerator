@@ -161,15 +161,15 @@ class Utils {
                     val compressionStream =
                         if (compressToXZ) XZOutputStream(output, LZMA2Options()) else GZIPOutputStream(output)
                     compressionStream.use {
-                        TarArchiveOutputStream(it).use {
+                        TarArchiveOutputStream(it).use { output ->
                             files.forEach { path ->
                                 val file = File(path)
                                 FileInputStream(file).use { input ->
                                     val entry = TarArchiveEntry(file.name)
                                     entry.size = file.length()
-                                    it.putArchiveEntry(entry)
-                                    input.copyTo(it)
-                                    it.closeArchiveEntry()
+                                    output.putArchiveEntry(entry)
+                                    input.copyTo(output)
+                                    output.closeArchiveEntry()
                                 }
                             }
                         }

@@ -5,14 +5,10 @@ import data.CompanyBusRoute
 
 class Patch {
     companion object {
-        // "B7A9E1A243516288" to "E5421509D8FC00AF" SHEK MUN ESTATE BUS TERMINUS
-        // "E3B8D0FF5C269463" <- belong to an obsolete route A41,O,serviceType=5
-        // "3236114A2BB68ACC" <- belong to obsolete routes A41,I,serviceType=5,6
-        // "93BA278DCD263EF8" <- belong to obsolete routes A41,I,serviceType=5,6
-        val accountedStops =
-            listOf("B7A9E1A243516288", "E3B8D0FF5C269463", "3236114A2BB68ACC", "93BA278DCD263EF8")
+        // TODO 107P-I-1 should use CTB route as reference
+        val accountedStops = emptyList<String>()
 
-        private val stopPatchMap = mapOf("B7A9E1A243516288" to "E5421509D8FC00AF")
+        private val stopPatchMap = emptyMap<String, String>()
 
         fun patchStops(busStops: MutableList<BusStop>) {
             stopPatchMap.forEach { (missingStopId, pairingStopId) ->
@@ -35,14 +31,18 @@ class Patch {
         }
 
         fun patchRoutes(routes: MutableList<CompanyBusRoute>) {
-            val routes1 = routes.filter { it.company == Company.KMB && it.number == "107" && it.bound == Bound.O }
+            // "60C1F7910C07C52B" for 115,I,1 KOWLOON CITY FERRY BUS TERMINUS (KC949), need no matching with a CTB stop,
+            // KMB included two consecutive terminating stops. This, the last one, was redundant.
+            val routes1 = routes.filter { it.company == Company.KMB && it.number == "115" && it.bound == Bound.I }
             routes1.forEach {
                 val newStops = it.stops.toMutableList()
-                newStops.remove("18E251745B9F2B5A")
+                newStops.remove("60C1F7910C07C52B")
                 routes.remove(it)
                 routes.add(it.copy(stops = newStops))
             }
 
+            // "F0A8A596641FFC5A" for 170,I,1 SHA TIN STATION BUS TERMINUS (ST941), need no matching with a CTB stop,
+            // KMB included two consecutive terminating stops. This, the last one, was redundant.
             val routes2 = routes.filter { it.company == Company.KMB && it.number == "170" && it.bound == Bound.I }
             routes2.forEach {
                 val newStops = it.stops.toMutableList()

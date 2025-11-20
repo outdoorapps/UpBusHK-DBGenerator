@@ -14,6 +14,6 @@ data class LongLatGeometry(
     val type: String, @Json(name = "coordinates") val longLatCoordinates: List<Double>
 )
 
-data class HK1980Geometry(
-    val type: String, @Json(name = "coordinates") val hk1980Coordinates: List<Int>
+data class Wgs84Geometry(
+    val type: String, @Json(name = "coordinates") val coordinates: List<Double>
 )

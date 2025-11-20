@@ -290,7 +290,6 @@ class RouteMerger(
         return closestStopId
     }
 
-
     // Return a list of all routes minus the joint route duplicates (for a KMB/LWB + CTB route, only the KMB/LWB route remains)
     private fun getJointedList(): List<CompanyBusRoute> {
         val list = mutableListOf<CompanyBusRoute>()

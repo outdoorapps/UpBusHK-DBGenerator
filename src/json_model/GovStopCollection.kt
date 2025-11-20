@@ -15,7 +15,7 @@ data class GovStopCollection(
 }
 
 data class GovStopFeature(
-    val type: String, val geometry: HK1980Geometry, val properties: Properties
+    val type: String, val geometry: Wgs84Geometry, val properties: Properties
 )
 
 data class Properties(

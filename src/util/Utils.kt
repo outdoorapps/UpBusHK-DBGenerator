@@ -112,8 +112,6 @@ class Utils {
 
         fun loadGovBusStopsCoordinatesOnly(): List<GovStop> {
             val govStops = mutableListOf<GovStop>()
-            val crsTransformationAdapter =
-                CrsTransformationAdapterCompositeFactory.createCrsTransformationFirstSuccess()
             val file = ZipFile(BUS_STOPS_GEOJSON_PATH)
             val jsonString = file.getInputStream(file.entries().nextElement()).use { input ->
                 input.bufferedReader().use { it.readText() }
@@ -121,20 +119,13 @@ class Utils {
 
             val feature = Klaxon().parse<GovStopCollection>(jsonString)!!.features
             feature.forEach {
-                val crsCoordinate = crsTransformationAdapter.transformToCoordinate(
-                    eastingNorthing(
-                        it.geometry.hk1980Coordinates[0].toDouble(),
-                        it.geometry.hk1980Coordinates[1].toDouble(),
-                        EpsgNumber.CHINA__HONG_KONG__HONG_KONG_1980_GRID_SYSTEM__2326
-                    ), EpsgNumber.WORLD__WGS_84__4326
-                )
                 govStops.add(
                     GovStop(
                         it.properties.stopId,
                         "",
                         "",
                         "",
-                        mutableListOf(crsCoordinate.getLatitude(), crsCoordinate.getLongitude())
+                        it.geometry.coordinates
                     )
                 )
             }

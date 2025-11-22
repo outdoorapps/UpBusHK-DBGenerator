@@ -7,7 +7,7 @@ import com.beust.klaxon.Json
 import com.beust.klaxon.Klaxon
 
 data class GovStopCollection(
-    val type: String, val name: String, val crs: CRS, val features: List<GovStopFeature>
+    val type: String, val name: String, val features: List<GovStopFeature>
 ) {
     companion object {
         fun fromJson(json: String) = Klaxon().parse<GovStopCollection>(json)

@@ -1,8 +1,6 @@
 package util
 
 import okhttp3.*
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.RequestBody.Companion.toRequestBody
 import util.Utils.Companion.execute
 import java.io.FileOutputStream
 import java.io.IOException
@@ -16,14 +14,15 @@ import javax.net.ssl.X509TrustManager
 
 class HttpUtils {
     companion object {
-        val jsonMediaType = "application/json; charset=utf-8".toMediaType()
-        private val okHttpClient = OkHttpClient()
+        private val dispatcher = Dispatcher().apply {
+            maxRequests = 500
+            maxRequestsPerHost = 500
+        }
+        private val okHttpClient = OkHttpClient.Builder().dispatcher(dispatcher).build()
         private val okHttpClientIgnoreCertificate = configureToIgnoreCertificate(OkHttpClient.Builder()).build()
 
         fun getAsync(
-            url: String,
-            onFailure: (call: Call) -> Unit,
-            onResponse: (responseBody: String) -> Unit
+            url: String, onFailure: (call: Call) -> Unit, onResponse: (responseBody: String) -> Unit
         ) {
             val request = Request.Builder().url(url).build()
             okHttpClient.newCall(request).enqueue(object : Callback {
